@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>洽谈室管理</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            primary: { 50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe', 300:'#93c5fd', 400:'#60a5fa', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 800:'#1e40af', 900:'#1e3a8a' },
+            accent:  { 50:'#f0fdf4', 100:'#dcfce7', 200:'#bbf7d0', 300:'#86efac', 400:'#4ade80', 500:'#22c55e', 600:'#16a34a' },
+            warn:    { 50:'#fff7ed', 100:'#ffedd5', 400:'#fb923c', 500:'#f97316', 600:'#ea580c' },
+            danger:  { 50:'#fef2f2', 100:'#fee2e2', 400:'#f87171', 500:'#ef4444', 600:'#dc2626' },
+            surface: { 50:'#f8fafc', 100:'#f1f5f9', 200:'#e2e8f0', 300:'#cbd5e1', 400:'#94a3b8', 500:'#64748b', 600:'#475569', 700:'#334155', 800:'#1e293b', 900:'#0f172a' }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f8fafc; min-width: 1440px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* General elements */
+    div, h3 { text-align: center; }
+
+    /* Cards */
+    .card { background: #ffffff; border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.05); border: 1px solid #e2e8f0; transition: all 0.2s; text-align: center; }
+    .card:hover { box-shadow: 0 2px 4px rgba(0,0,0,.08); }
+
+    /* Buttons */
+    .btn { padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; text-align: center; }
+    .btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; }
+    .btn-secondary { background: #f8fafc; color: #334155; border-color: #e2e8f0; }
+    .btn-secondary:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .btn-success { background: #16a34a; color: #fff; border-color: #16a34a; }
+    .btn-success:hover { background: #15803d; border-color: #15803d; }
+    .btn-warning { background: #f97316; color: #fff; border-color: #f97316; }
+    .btn-warning:hover { background: #ea580c; border-color: #ea580c; }
+
+    /* Status badges */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+    .badge-free { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
+    .badge-occupied { background: #ffedd5; color: #ea580c; border: 1px solid #fed7aa; }
+    .badge-disabled { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+    /* Meeting room card */
+    .meeting-card { transition: all 0.2s; }
+    .meeting-card:hover { transform: translateY(-1px); }
+
+    /* Status summary */
+    .status-card { border-radius: 8px; padding: 12px 16px; border: 1px solid #e2e8f0; text-align: center; }
+    .status-card.free { background: #f0fdf4; border-color: #bbf7d0; }
+    .status-card.occupied { background: #fff7ed; border-color: #fed7aa; }
+    .status-card.disabled { background: #f8fafc; border-color: #e2e8f0; }
+
+    /* Slide-in animation */
+    @keyframes slideIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
+    .slide-in { animation: slideIn 0.3s ease forwards; text-align: center; }
+    
+    /* Header */
+    .page-header { text-align: center; margin-bottom: 1.5rem; }
+  </style>
+</head>
+<body class="bg-surface-50 text-surface-800">
+
+  <!-- Top Navbar -->
+  <header class="h-14 bg-white border-b border-surface-200 flex items-center px-6 gap-4 fixed top-0 left-0 right-0 z-100">
+    <div class="flex items-center gap-2">
+      <span class="font-bold text-surface-900 text-base">排号管理系统</span>
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="flex-1 flex items-center gap-2 text-sm text-surface-400">
+      <span>/ 洽谈室管理</span>
+    </div>
+
+    <!-- Right area -->
+    <div class="flex items-center gap-4">
+      <!-- Search -->
+      <div class="relative">
+        <input type="text" placeholder="搜索功能..." class="bg-surface-50 border border-surface-200 rounded-md pl-8 pr-4 py-1.5 text-sm w-48 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all" />
+        <i data-lucide="search" class="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+      </div>
+
+      <!-- User -->
+      <div class="flex items-center gap-2">
+        <span class="text-sm text-surface-600">管理员</span>
+        <div class="w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center text-white text-xs font-bold">管</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 p-6 pt-20">
+
+    <!-- Meeting Room Page -->
+    <div class="slide-in">
+      <div class="page-header">
+        <h1 class="text-lg font-semibold text-surface-900">洽谈室管理</h1>
+        <p class="text-xs text-surface-400 mt-0.5">洽谈室状态全生命周期管理</p>
+        <button id="add-meeting-btn" class="btn btn-primary flex items-center gap-2 mx-auto mt-3">
+          <i data-lucide="plus" class="w-3.5 h-3.5"></i> 新增洽谈室
+        </button>
+      </div>
+      
+      <!-- Status summary -->
+      <div class="flex gap-3 mb-4">
+        <div class="status-card free flex-1">
+          <div class="text-xl font-bold text-accent-700">6</div>
+          <div class="text-xs text-surface-500">空闲</div>
+        </div>
+        <div class="status-card occupied flex-1">
+          <div class="text-xl font-bold text-warn-600">4</div>
+          <div class="text-xs text-surface-500">占用中</div>
+        </div>
+        <div class="status-card disabled flex-1">
+          <div class="text-xl font-bold text-surface-500">2</div>
+          <div class="text-xs text-surface-500">停用</div>
+        </div>
+      </div>
+      
+      <!-- Meeting Room Grid -->
+      <div class="grid grid-cols-4 gap-3" id="meeting-grid">
+        <!-- Meeting room cards will be generated by JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Add Meeting Room Modal -->
+  <div id="modal-meeting" class="modal-overlay">
+    <div class="modal-box">
+      <div class="p-6 border-b border-surface-100">
+        <h3 class="text-lg font-bold text-surface-900">新增洽谈室</h3>
+      </div>
+      <div class="p-6 space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div><label class="form-label">洽谈室编号 *</label><input type="text" class="form-input" placeholder="如：A1" /></div>
+          <div><label class="form-label">洽谈室名称 *</label><input type="text" class="form-input" placeholder="如：洽谈室A1" /></div>
+          <div><label class="form-label">容纳人数</label><input type="number" class="form-input" placeholder="4" value="4" /></div>
+          <div><label class="form-label">初始状态</label><select class="form-input form-select"><option>空闲</option><option>停用</option></select></div>
+          <div class="col-span-2"><label class="form-label">备注</label><textarea class="form-input h-20 resize-none" placeholder="备注信息..."></textarea></div>
+        </div>
+      </div>
+      <div class="p-6 border-t border-surface-100 flex gap-3 justify-end">
+        <button id="modal-meeting-close" class="btn btn-secondary">取消</button>
+        <button class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Meeting room data
+    const meetingRooms = [
+      { id: 1, code: 'A1', name: '洽谈室 A1', status: 'free', customer: null, duration: null },
+      { id: 2, code: 'A2', name: '洽谈室 A2', status: 'occupied', customer: '张三', duration: 32 },
+      { id: 3, code: 'A3', name: '洽谈室 A3', status: 'occupied', customer: '李四', duration: 46 },
+      { id: 4, code: 'B1', name: '洽谈室 B1', status: 'free', customer: null, duration: null },
+      { id: 5, code: 'B2', name: '洽谈室 B2', status: 'occupied', customer: '王五', duration: 15 },
+      { id: 6, code: 'B3', name: '洽谈室 B3', status: 'free', customer: null, duration: null },
+      { id: 7, code: 'C1', name: '洽谈室 C1', status: 'disabled', customer: null, duration: null },
+      { id: 8, code: 'C2', name: '洽谈室 C2', status: 'free', customer: null, duration: null },
+      { id: 9, code: 'D1', name: '洽谈室 D1', status: 'free', customer: null, duration: null },
+      { id: 10, code: 'D2', name: '洽谈室 D2', status: 'occupied', customer: '赵六', duration: 5 },
+      { id: 11, code: 'E1', name: '洽谈室 E1', status: 'disabled', customer: null, duration: null },
+      { id: 12, code: 'E2', name: '洽谈室 E2', status: 'free', customer: null, duration: null }
+    ];
+
+    // Render meeting rooms
+    function renderMeetingRooms() {
+      const grid = document.getElementById('meeting-grid');
+      grid.innerHTML = '';
+
+      meetingRooms.forEach(room => {
+        const card = document.createElement('div');
+        card.className = 'card p-4 meeting-card';
+
+        let statusText, statusClass, statusIcon;
+        switch(room.status) {
+          case 'free':
+            statusText = '空闲';
+            statusClass = 'badge-free';
+            statusIcon = 'check-circle';
+            break;
+          case 'occupied':
+            statusText = '占用中';
+            statusClass = 'badge-occupied';
+            statusIcon = 'user';
+            break;
+          case 'disabled':
+            statusText = '停用';
+            statusClass = 'badge-disabled';
+            statusIcon = 'x-circle';
+            break;
+        }
+
+        card.innerHTML = `
+          <div class="mb-3">
+            <div class="font-medium text-surface-800 mb-2">${room.name}</div>
+            <span class="badge ${statusClass}">
+              <i data-lucide="${statusIcon}" class="w-3 h-3"></i>
+              ${statusText}
+            </span>
+          </div>
+          
+          ${room.status === 'occupied' ? `
+            <div class="text-sm text-surface-600 mb-3">
+              <div class="mb-1">客户: ${room.customer}</div>
+              <div>时长: ${room.duration}分钟</div>
+            </div>
+          ` : room.status === 'free' ? `
+            <div class="text-sm text-surface-400 mb-3">暂无使用</div>
+          ` : `
+            <div class="text-sm text-surface-400 mb-3">暂无使用</div>
+          `}
+          
+          <div class="flex gap-2 justify-center">
+            ${room.status === 'free' ? `
+              <button class="btn btn-primary flex-1">启用</button>
+              <button class="btn btn-secondary flex-1">停用</button>
+            ` : room.status === 'occupied' ? `
+              <button class="btn btn-secondary flex-1">释放</button>
+              <button class="btn btn-warning flex-1">强制结束</button>
+            ` : `
+              <button class="btn btn-success flex-1">恢复</button>
+              <button class="btn btn-secondary flex-1">编辑</button>
+            `}
+          </div>
+        `;
+
+        grid.appendChild(card);
+      });
+
+      // Reinitialize icons for dynamically created elements
+      lucide.createIcons();
+    }
+
+    // Modal functionality
+    const addMeetingBtn = document.getElementById('add-meeting-btn');
+    const modalMeeting = document.getElementById('modal-meeting');
+    const modalMeetingClose = document.getElementById('modal-meeting-close');
+
+    addMeetingBtn.addEventListener('click', () => {
+      modalMeeting.classList.add('open');
+    });
+
+    modalMeetingClose.addEventListener('click', () => {
+      modalMeeting.classList.remove('open');
+    });
+
+    // Close modal when clicking outside
+    modalMeeting.addEventListener('click', (e) => {
+      if (e.target === modalMeeting) {
+        modalMeeting.classList.remove('open');
+      }
+    });
+
+    // Initial render
+    renderMeetingRooms();
+  </script>
+</body>
+</html>

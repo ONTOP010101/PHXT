@@ -1,0 +1,2082 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="filename" content="queue-management-system.html" />
+  <title>排号管理系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            primary: { 50:'#eff6ff', 100:'#dbeafe', 200:'#bfdbfe', 300:'#93c5fd', 400:'#60a5fa', 500:'#3b82f6', 600:'#2563eb', 700:'#1d4ed8', 800:'#1e40af', 900:'#1e3a8a' },
+            accent:  { 50:'#f0fdf4', 100:'#dcfce7', 200:'#bbf7d0', 300:'#86efac', 400:'#4ade80', 500:'#22c55e', 600:'#16a34a' },
+            warn:    { 50:'#fff7ed', 100:'#ffedd5', 400:'#fb923c', 500:'#f97316', 600:'#ea580c' },
+            danger:  { 50:'#fef2f2', 100:'#fee2e2', 400:'#f87171', 500:'#ef4444', 600:'#dc2626' },
+            surface: { 50:'#f8fafc', 100:'#f1f5f9', 200:'#e2e8f0', 300:'#cbd5e1', 400:'#94a3b8', 500:'#64748b', 600:'#475569', 700:'#334155', 800:'#1e293b', 900:'#0f172a' }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #f1f5f9; min-width: 1440px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Sidebar */
+    .sidebar { width: 240px; min-width: 240px; }
+    .sidebar-item { transition: all 0.2s ease; }
+    .sidebar-item:hover { background: #eff6ff; color: #2563eb; }
+    .sidebar-item.active { background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb; border-right: 3px solid #2563eb; font-weight: 600; }
+    .sidebar-sub-item { transition: all 0.18s ease; }
+    .sidebar-sub-item:hover { background: #f8fafc; color: #2563eb; }
+    .sidebar-sub-item.active { color: #2563eb; font-weight: 600; background: #eff6ff; }
+
+    /* Cards */
+    .card { background: #ffffff; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.05); border: 1px solid rgba(226,232,240,.8); transition: box-shadow 0.2s; }
+    .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08), 0 8px 32px rgba(0,0,0,.07); }
+    .stat-card { border-radius: 16px; padding: 24px; }
+
+    /* Page visibility */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* Login */
+    #login-page { display: flex; }
+    .login-bg { background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 40%, #2563eb 70%, #3b82f6 100%); }
+
+    /* Badges */
+    .badge { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 100px; font-size: 11px; font-weight: 600; }
+    .badge-green  { background: #dcfce7; color: #16a34a; }
+    .badge-blue   { background: #dbeafe; color: #1d4ed8; }
+    .badge-orange { background: #ffedd5; color: #ea580c; }
+    .badge-red    { background: #fee2e2; color: #dc2626; }
+    .badge-gray   { background: #f1f5f9; color: #475569; }
+    .badge-purple { background: #f3e8ff; color: #7c3aed; }
+
+    /* Table */
+    .data-table thead th { background: #f8fafc; font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 10px 16px; border-bottom: 1px solid #e2e8f0; }
+    .data-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background 0.15s; }
+    .data-table tbody tr:hover { background: #f8fafc; }
+    .data-table tbody td { padding: 12px 16px; font-size: 13.5px; color: #334155; }
+    .data-table tbody tr:last-child { border-bottom: none; }
+
+    /* Buttons */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: all 0.18s; border: none; outline: none; }
+    .btn-primary { background: linear-gradient(135deg,#2563eb,#1d4ed8); color: #fff; box-shadow: 0 2px 8px rgba(37,99,235,.3); }
+    .btn-primary:hover { background: linear-gradient(135deg,#1d4ed8,#1e40af); box-shadow: 0 4px 12px rgba(37,99,235,.4); transform: translateY(-1px); }
+    .btn-outline { background: #fff; color: #334155; border: 1px solid #e2e8f0; }
+    .btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; }
+    .btn-danger { background: #fee2e2; color: #dc2626; }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-success { background: #dcfce7; color: #16a34a; }
+    .btn-success:hover { background: #bbf7d0; }
+    .btn-icon { padding: 7px; border-radius: 8px; background: #f1f5f9; color: #64748b; cursor: pointer; transition: all 0.15s; border: none; display: inline-flex; align-items: center; justify-content: center; }
+    .btn-icon:hover { background: #e2e8f0; color: #334155; }
+
+    /* Input */
+    .form-input { width: 100%; padding: 9px 12px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 13.5px; color: #334155; outline: none; transition: all 0.18s; background: #fff; }
+    .form-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+    .form-select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .form-label { font-size: 13px; font-weight: 500; color: #475569; margin-bottom: 4px; display: block; }
+
+    /* Notifications */
+    .notif-panel { position: fixed; top: 64px; right: 20px; width: 340px; background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.12); border: 1px solid #e2e8f0; z-index: 200; transform: translateY(-8px); opacity: 0; pointer-events: none; transition: all 0.25s ease; }
+    .notif-panel.open { transform: translateY(0); opacity: 1; pointer-events: auto; }
+
+    /* Modal */
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.45); backdrop-filter: blur(4px); z-index: 300; display: none; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-box { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.18); width: 560px; max-height: 90vh; overflow-y: auto; }
+
+    /* Keyboard */
+    .keyboard-key { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 8px; cursor: pointer; font-size: 14px; font-weight: 500; color: #334155; transition: all 0.12s; box-shadow: 0 1px 3px rgba(0,0,0,.06); text-align: center; user-select: none; }
+    .keyboard-key:hover { background: #eff6ff; border-color: #93c5fd; color: #2563eb; }
+    .keyboard-key:active { transform: scale(0.95); background: #dbeafe; }
+
+    /* Queue number display */
+    .queue-num { font-size: 48px; font-weight: 800; line-height: 1; letter-spacing: -2px; }
+
+    /* Drag handle for queue */
+    .drag-row { cursor: grab; }
+    .drag-row:active { cursor: grabbing; }
+
+    /* Chart container */
+    .chart-wrap { position: relative; }
+
+    /* Sidebar toggle for sub-menu */
+    .sub-menu { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+    .sub-menu.open { max-height: 300px; }
+    .chevron-icon { transition: transform 0.3s; }
+    .chevron-icon.rotated { transform: rotate(180deg); }
+
+    /* Scrollable area */
+    .main-content { height: calc(100vh - 64px); overflow-y: auto; }
+
+    /* Display screen */
+    .display-screen { background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; border-radius: 16px; min-height: 500px; }
+
+    /* Pulse animation */
+    @keyframes pulse-dot { 0%,100% { opacity:1; transform: scale(1); } 50% { opacity:.5; transform: scale(1.4); } }
+    .pulse-dot { animation: pulse-dot 1.8s infinite; }
+
+    /* Slide-in animation */
+    @keyframes slideIn { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+    .slide-in { animation: slideIn 0.3s ease forwards; }
+
+    /* Number ticker */
+    @keyframes countUp { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+    .count-anim { animation: countUp 0.5s ease forwards; }
+  </style>
+</head>
+<body class="bg-surface-100 text-surface-800">
+
+<!-- ===== LOGIN PAGE ===== -->
+<div id="login-page" class="min-h-screen flex" style="display:flex">
+  <!-- Left branding panel -->
+  <div class="login-bg w-1/2 flex flex-col items-center justify-center p-16 relative overflow-hidden">
+    <!-- Decorative circles -->
+    <div class="absolute top-[-80px] left-[-80px] w-64 h-64 rounded-full bg-white opacity-5"></div>
+    <div class="absolute bottom-[-100px] right-[-60px] w-96 h-96 rounded-full bg-white opacity-5"></div>
+    <div class="absolute top-1/2 left-1/4 w-40 h-40 rounded-full bg-white opacity-5"></div>
+
+    <div class="relative z-10 text-center text-white">
+      <div class="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white border-opacity-30">
+        <i data-lucide="layers" class="w-10 h-10 text-white"></i>
+      </div>
+      <h1 class="text-4xl font-800 mb-3 tracking-tight" style="font-weight:800;">排号管理系统</h1>
+      <p class="text-blue-200 text-lg mb-12">Queue Management System</p>
+
+      <div class="space-y-5 text-left max-w-xs mx-auto">
+        <div class="flex items-center gap-4 bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur-sm border border-white border-opacity-20">
+          <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="font-600 text-sm" style="font-weight:600;">实时叫号</div>
+            <div class="text-blue-200 text-xs">毫秒级响应，零延迟同步</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur-sm border border-white border-opacity-20">
+          <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i data-lucide="bar-chart-2" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="font-600 text-sm" style="font-weight:600;">数据统计</div>
+            <div class="text-blue-200 text-xs">多维度业务数据可视化</div>
+          </div>
+        </div>
+        <div class="flex items-center gap-4 bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur-sm border border-white border-opacity-20">
+          <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="font-600 text-sm" style="font-weight:600;">权限管理</div>
+            <div class="text-blue-200 text-xs">多角色分级权限管控</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right login form -->
+  <div class="w-1/2 flex items-center justify-center bg-white p-16">
+    <div class="w-full max-w-md">
+      <div class="mb-10">
+        <h2 class="text-3xl font-bold text-surface-900 mb-2">欢迎回来</h2>
+        <p class="text-surface-400 text-sm">请输入您的账号和密码登录系统</p>
+      </div>
+
+      <div class="space-y-5">
+        <div>
+          <label class="form-label">账号</label>
+          <div class="relative">
+            <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+            <input id="login-username" type="text" placeholder="请输入登录账号" class="form-input pl-10" value="admin" />
+          </div>
+        </div>
+        <div>
+          <label class="form-label">密码</label>
+          <div class="relative">
+            <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+            <input id="login-password" type="password" placeholder="请输入登录密码" class="form-input pl-10" value="123456" />
+            <button id="toggle-pwd" class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+        <div class="flex items-center justify-between">
+          <label class="flex items-center gap-2 text-sm text-surface-500 cursor-pointer">
+            <input type="checkbox" class="w-4 h-4 rounded text-primary-600" checked /> 记住我
+          </label>
+          <a href="#" class="text-sm text-primary-600 hover:text-primary-700">忘记密码？</a>
+        </div>
+        <button id="login-btn" class="btn btn-primary w-full justify-center py-3 text-base">
+          <i data-lucide="log-in" class="w-4 h-4"></i> 登录系统
+        </button>
+      </div>
+
+      <div class="mt-8 pt-6 border-t border-surface-100 text-center text-xs text-surface-400">
+        测试账号：admin / 123456 &nbsp;|&nbsp; © 2025 排号管理系统
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MAIN APP ===== -->
+<div id="main-app" class="flex flex-col" style="display:none; min-height:100vh;">
+
+  <!-- Top Navbar -->
+  <header class="h-16 bg-white border-b border-surface-200 flex items-center px-6 gap-4 fixed top-0 left-0 right-0 z-100" style="z-index:100;">
+    <div class="flex items-center gap-3 w-60">
+      <div class="w-8 h-8 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
+        <i data-lucide="layers" class="w-4 h-4 text-white"></i>
+      </div>
+      <span class="font-bold text-surface-900 text-base">排号管理系统</span>
+    </div>
+
+    <!-- Breadcrumb -->
+    <div class="flex-1 flex items-center gap-2 text-sm text-surface-400">
+      <i data-lucide="home" class="w-3.5 h-3.5"></i>
+      <span>/</span>
+      <span id="breadcrumb-text" class="text-surface-600 font-medium">首页</span>
+    </div>
+
+    <!-- Right area -->
+    <div class="flex items-center gap-3">
+      <!-- Search -->
+      <div class="relative">
+        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+        <input type="text" placeholder="搜索功能..." class="bg-surface-100 border border-surface-200 rounded-lg pl-9 pr-4 py-2 text-sm w-48 outline-none focus:border-primary-400 focus:ring-2 focus:ring-primary-100 transition-all" />
+      </div>
+
+      <!-- Notifications -->
+      <button id="notif-btn" class="relative w-9 h-9 flex items-center justify-center rounded-lg hover:bg-surface-100 transition-colors">
+        <i data-lucide="bell" class="w-5 h-5 text-surface-500"></i>
+        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+      </button>
+
+      <!-- Avatar -->
+      <div class="flex items-center gap-2 pl-2 border-l border-surface-200">
+        <div class="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center text-white text-xs font-bold">管</div>
+        <div>
+          <div class="text-sm font-medium text-surface-700">管理员</div>
+          <div class="text-xs text-surface-400">超级管理员</div>
+        </div>
+        <button id="logout-btn" class="ml-1 btn-icon">
+          <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notifications Panel -->
+  <div id="notif-panel" class="notif-panel">
+    <div class="p-4 border-b border-surface-100 flex items-center justify-between">
+      <span class="font-semibold text-surface-800">通知消息</span>
+      <span class="badge badge-blue">4 条未读</span>
+    </div>
+    <div class="max-h-80 overflow-y-auto">
+      <div class="p-4 border-b border-surface-50 hover:bg-surface-50 cursor-pointer">
+        <div class="flex gap-3">
+          <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i data-lucide="bell-ring" class="w-4 h-4 text-blue-600"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-surface-800">新排号提醒</div>
+            <div class="text-xs text-surface-400 mt-0.5">客户张三已完成排号，号码 A-021</div>
+            <div class="text-xs text-surface-300 mt-1">2分钟前</div>
+          </div>
+        </div>
+      </div>
+      <div class="p-4 border-b border-surface-50 hover:bg-surface-50 cursor-pointer">
+        <div class="flex gap-3">
+          <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i data-lucide="alert-circle" class="w-4 h-4 text-orange-500"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-surface-800">洽谈室占用提醒</div>
+            <div class="text-xs text-surface-400 mt-0.5">A3洽谈室已超时使用30分钟</div>
+            <div class="text-xs text-surface-300 mt-1">15分钟前</div>
+          </div>
+        </div>
+      </div>
+      <div class="p-4 border-b border-surface-50 hover:bg-surface-50 cursor-pointer">
+        <div class="flex gap-3">
+          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-surface-800">业务完成通知</div>
+            <div class="text-xs text-surface-400 mt-0.5">B-015号客户业务已完成办理</div>
+            <div class="text-xs text-surface-300 mt-1">28分钟前</div>
+          </div>
+        </div>
+      </div>
+      <div class="p-4 hover:bg-surface-50 cursor-pointer">
+        <div class="flex gap-3">
+          <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <i data-lucide="calendar" class="w-4 h-4 text-purple-600"></i>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-surface-800">预约提醒</div>
+            <div class="text-xs text-surface-400 mt-0.5">明日上午有3个专点预约待处理</div>
+            <div class="text-xs text-surface-300 mt-1">1小时前</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="p-3 border-t border-surface-100 text-center">
+      <button class="text-sm text-primary-600 hover:text-primary-700 font-medium">查看全部通知</button>
+    </div>
+  </div>
+
+  <!-- Body: Sidebar + Content -->
+  <div class="flex pt-16" style="min-height: calc(100vh - 0px);">
+
+    <!-- Sidebar -->
+    <aside class="sidebar bg-white border-r border-surface-200 fixed left-0 top-16 bottom-0 overflow-y-auto z-50">
+      <nav class="py-4 px-3">
+
+        <!-- Home -->
+        <div class="sidebar-item active flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer" data-page="home">
+          <i data-lucide="layout-dashboard" class="w-4.5 h-4.5 flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">首页</span>
+        </div>
+
+        <!-- Data Management -->
+        <div class="mt-2 mb-1 px-3">
+          <span class="text-xs font-600 text-surface-400 uppercase tracking-wider" style="font-weight:600;">资料管理</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer" data-page="customer">
+          <i data-lucide="users" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">客户资料</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer" data-page="meeting">
+          <i data-lucide="door-open" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">洽谈室管理</span>
+        </div>
+
+        <!-- Business Management -->
+        <div class="mt-2 mb-1 px-3">
+          <span class="text-xs font-600 text-surface-400 uppercase tracking-wider" style="font-weight:600;">业务管理</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer" data-page="business-public">
+          <i data-lucide="user-check" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">公开见客业务</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer" data-page="business-appoint">
+          <i data-lucide="calendar-check" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">专点见客预约</span>
+        </div>
+
+        <!-- Queue System -->
+        <div class="mt-2 mb-1 px-3">
+          <span class="text-xs font-600 text-surface-400 uppercase tracking-wider" style="font-weight:600;">排号系统</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer" data-page="queue-self">
+          <i data-lucide="ticket" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">自助排号管理</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer" data-page="queue-display">
+          <i data-lucide="monitor" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">排号显示大屏</span>
+        </div>
+
+        <!-- Page Management -->
+        <div class="mt-2 mb-1 px-3">
+          <span class="text-xs font-600 text-surface-400 uppercase tracking-wider" style="font-weight:600;">页面管理</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer" data-page="page-mini-index">
+          <i data-lucide="smartphone" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">小程序首页配置</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer" data-page="page-mini-display">
+          <i data-lucide="sliders" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">小程序排号页配置</span>
+        </div>
+
+        <!-- System Management -->
+        <div class="mt-2 mb-1 px-3">
+          <span class="text-xs font-600 text-surface-400 uppercase tracking-wider" style="font-weight:600;">系统管理</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer" data-page="system-role">
+          <i data-lucide="shield" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">角色管理</span>
+        </div>
+        <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer" data-page="system-user">
+          <i data-lucide="user-cog" class="flex-shrink-0" style="width:18px;height:18px;"></i>
+          <span class="text-sm">用户管理</span>
+        </div>
+      </nav>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content flex-1 p-6" style="margin-left: 240px; width: calc(100% - 240px);">
+
+      <!-- ====== HOME PAGE ====== -->
+      <div id="page-home" class="page active slide-in">
+        <!-- Stats Row -->
+        <div class="grid grid-cols-4 gap-5 mb-6">
+          <div class="stat-card card" style="background: linear-gradient(135deg,#eff6ff,#dbeafe);">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-11 h-11 bg-primary-600 rounded-xl flex items-center justify-center shadow-md">
+                <i data-lucide="ticket" class="w-5 h-5 text-white"></i>
+              </div>
+              <span class="badge badge-blue">今日</span>
+            </div>
+            <div class="text-3xl font-bold text-primary-700 mb-1" id="stat-total">128</div>
+            <div class="text-sm text-surface-500">今日排号总数</div>
+            <div class="mt-3 flex items-center gap-1 text-xs text-accent-600">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+              <span>较昨日 +12%</span>
+            </div>
+          </div>
+          <div class="stat-card card" style="background: linear-gradient(135deg,#f0fdf4,#dcfce7);">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-11 h-11 bg-accent-500 rounded-xl flex items-center justify-center shadow-md">
+                <i data-lucide="check-circle-2" class="w-5 h-5 text-white"></i>
+              </div>
+              <span class="badge badge-green">完成</span>
+            </div>
+            <div class="text-3xl font-bold text-accent-700 mb-1" id="stat-done">97</div>
+            <div class="text-sm text-surface-500">叫号完成数</div>
+            <div class="mt-3 flex items-center gap-1 text-xs text-accent-600">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+              <span>完成率 75.8%</span>
+            </div>
+          </div>
+          <div class="stat-card card" style="background: linear-gradient(135deg,#fff7ed,#ffedd5);">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-11 h-11 bg-warn-500 rounded-xl flex items-center justify-center shadow-md">
+                <i data-lucide="users" class="w-5 h-5 text-white"></i>
+              </div>
+              <span class="badge badge-orange">等待</span>
+            </div>
+            <div class="text-3xl font-bold text-warn-600 mb-1" id="stat-waiting">23</div>
+            <div class="text-sm text-surface-500">当前等待人数</div>
+            <div class="mt-3 flex items-center gap-1 text-xs text-warn-600">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+              <span>平均等待 18分钟</span>
+            </div>
+          </div>
+          <div class="stat-card card" style="background: linear-gradient(135deg,#fdf4ff,#f3e8ff);">
+            <div class="flex items-center justify-between mb-4">
+              <div class="w-11 h-11 bg-purple-600 rounded-xl flex items-center justify-center shadow-md">
+                <i data-lucide="percent" class="w-5 h-5 text-white"></i>
+              </div>
+              <span class="badge badge-purple">转化</span>
+            </div>
+            <div class="text-3xl font-bold text-purple-700 mb-1">84.2%</div>
+            <div class="text-sm text-surface-500">业务转化率</div>
+            <div class="mt-3 flex items-center gap-1 text-xs text-purple-600">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+              <span>较上周 +3.1%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle row: Chart + Quick Actions + Real-time notifications -->
+        <div class="grid grid-cols-12 gap-5 mb-6">
+          <!-- Chart -->
+          <div class="col-span-5 card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-semibold text-surface-800">今日叫号趋势</h3>
+                <p class="text-xs text-surface-400 mt-0.5">按小时统计排号量</p>
+              </div>
+              <select class="form-input form-select w-28 text-xs py-1.5">
+                <option>今日</option><option>本周</option><option>本月</option>
+              </select>
+            </div>
+            <div class="chart-wrap" style="height:200px;">
+              <canvas id="chart-trend"></canvas>
+            </div>
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="col-span-4 card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4">快捷操作</h3>
+            <div class="grid grid-cols-2 gap-3">
+              <button class="quick-action-btn flex flex-col items-center gap-2 p-4 rounded-xl bg-primary-50 hover:bg-primary-100 transition-colors cursor-pointer border border-primary-100" data-page="queue-self">
+                <div class="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
+                  <i data-lucide="plus-circle" class="w-5 h-5 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-primary-700">立即排号</span>
+              </button>
+              <button class="quick-action-btn flex flex-col items-center gap-2 p-4 rounded-xl bg-accent-50 hover:bg-accent-100 transition-colors cursor-pointer border border-accent-100" data-page="business-public">
+                <div class="w-10 h-10 bg-accent-500 rounded-xl flex items-center justify-center">
+                  <i data-lucide="phone-call" class="w-5 h-5 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-accent-700">立即叫号</span>
+              </button>
+              <button class="quick-action-btn flex flex-col items-center gap-2 p-4 rounded-xl bg-warn-50 hover:bg-orange-100 transition-colors cursor-pointer border border-orange-100" data-page="business-appoint">
+                <div class="w-10 h-10 bg-warn-500 rounded-xl flex items-center justify-center">
+                  <i data-lucide="calendar-plus" class="w-5 h-5 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-warn-600">预约登记</span>
+              </button>
+              <button class="quick-action-btn flex flex-col items-center gap-2 p-4 rounded-xl bg-purple-50 hover:bg-purple-100 transition-colors cursor-pointer border border-purple-100" data-page="queue-display">
+                <div class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
+                  <i data-lucide="monitor" class="w-5 h-5 text-white"></i>
+                </div>
+                <span class="text-xs font-medium text-purple-700">显示大屏</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Real-time alerts -->
+          <div class="col-span-3 card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold text-surface-800">实时提醒</h3>
+              <span class="flex items-center gap-1 text-xs text-accent-600">
+                <span class="pulse-dot w-2 h-2 bg-accent-500 rounded-full inline-block"></span>实时
+              </span>
+            </div>
+            <div class="space-y-3" id="realtime-list">
+              <div class="flex gap-2.5 items-start">
+                <div class="w-7 h-7 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i data-lucide="bell" class="w-3.5 h-3.5 text-blue-600"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-medium text-surface-700">A-021 已排号</div>
+                  <div class="text-xs text-surface-400">张三 · 刚刚</div>
+                </div>
+              </div>
+              <div class="flex gap-2.5 items-start">
+                <div class="w-7 h-7 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i data-lucide="check" class="w-3.5 h-3.5 text-green-600"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-medium text-surface-700">B-015 业务完成</div>
+                  <div class="text-xs text-surface-400">李四 · 5分钟前</div>
+                </div>
+              </div>
+              <div class="flex gap-2.5 items-start">
+                <div class="w-7 h-7 bg-orange-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i data-lucide="clock" class="w-3.5 h-3.5 text-orange-500"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-medium text-surface-700">A3洽谈室超时</div>
+                  <div class="text-xs text-surface-400">15分钟前</div>
+                </div>
+              </div>
+              <div class="flex gap-2.5 items-start">
+                <div class="w-7 h-7 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <i data-lucide="calendar" class="w-3.5 h-3.5 text-purple-600"></i>
+                </div>
+                <div>
+                  <div class="text-xs font-medium text-surface-700">新预约：王五</div>
+                  <div class="text-xs text-surface-400">20分钟前</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom row: Meeting room status + Queue list -->
+        <div class="grid grid-cols-12 gap-5">
+          <!-- Meeting rooms -->
+          <div class="col-span-4 card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold text-surface-800">洽谈室状态</h3>
+              <button class="quick-action-btn text-xs text-primary-600 hover:underline" data-page="meeting">查看全部</button>
+            </div>
+            <div class="grid grid-cols-2 gap-3" id="home-meeting-grid">
+              <!-- filled by JS -->
+            </div>
+          </div>
+
+          <!-- Today queue -->
+          <div class="col-span-8 card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h3 class="font-semibold text-surface-800">今日排号队列</h3>
+                <p class="text-xs text-surface-400 mt-0.5">实时更新中</p>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn btn-outline text-xs py-1.5 px-3">导出</button>
+                <button class="quick-action-btn btn btn-primary text-xs py-1.5 px-3" data-page="business-public">叫下一号</button>
+              </div>
+            </div>
+            <table class="data-table w-full">
+              <thead><tr>
+                <th>号码</th><th>客户姓名</th><th>业务类型</th><th>等待时间</th><th>状态</th><th>操作</th>
+              </tr></thead>
+              <tbody id="home-queue-body">
+                <!-- filled by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== CUSTOMER PAGE ====== -->
+      <div id="page-customer" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">客户资料</h2>
+            <p class="text-sm text-surface-400 mt-1">管理客户基础信息与历史记录</p>
+          </div>
+          <button id="add-customer-btn" class="btn btn-primary">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> 新增客户
+          </button>
+        </div>
+        <!-- Filter Bar -->
+        <div class="card p-4 mb-4 flex gap-3 items-center">
+          <div class="relative flex-1 max-w-xs">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+            <input type="text" placeholder="搜索姓名/手机号..." class="form-input pl-9" />
+          </div>
+          <select class="form-input form-select w-36">
+            <option>全部状态</option><option>正常</option><option>锁定</option>
+          </select>
+          <select class="form-input form-select w-36">
+            <option>全部来源</option><option>自助排号</option><option>预约</option>
+          </select>
+          <button class="btn btn-primary"><i data-lucide="search" class="w-4 h-4"></i> 查询</button>
+          <button class="btn btn-outline"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置</button>
+          <div class="ml-auto flex gap-2">
+            <button class="btn btn-outline"><i data-lucide="upload" class="w-4 h-4"></i> 导入</button>
+            <button class="btn btn-outline"><i data-lucide="download" class="w-4 h-4"></i> 导出</button>
+          </div>
+        </div>
+        <!-- Table -->
+        <div class="card overflow-hidden">
+          <table class="data-table w-full">
+            <thead><tr>
+              <th><input type="checkbox" class="w-4 h-4" /></th>
+              <th>客户编号</th><th>姓名</th><th>手机号</th><th>公司名称</th><th>累计排号</th><th>最近来访</th><th>状态</th><th>操作</th>
+            </tr></thead>
+            <tbody id="customer-table-body"></tbody>
+          </table>
+          <div class="p-4 border-t border-surface-100 flex items-center justify-between text-sm text-surface-400">
+            <span>共 <strong class="text-surface-700">86</strong> 条记录</span>
+            <div class="flex gap-1">
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+              <button class="w-7 h-7 flex items-center justify-center text-xs font-medium bg-primary-600 text-white rounded-lg">1</button>
+              <button class="w-7 h-7 flex items-center justify-center text-xs text-surface-500 hover:bg-surface-100 rounded-lg">2</button>
+              <button class="w-7 h-7 flex items-center justify-center text-xs text-surface-500 hover:bg-surface-100 rounded-lg">3</button>
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== MEETING ROOM PAGE ====== -->
+      <div id="page-meeting" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">洽谈室管理</h2>
+            <p class="text-sm text-surface-400 mt-1">洽谈室状态全生命周期管理</p>
+          </div>
+          <button id="add-meeting-btn" class="btn btn-primary">
+            <i data-lucide="plus" class="w-4 h-4"></i> 新增洽谈室
+          </button>
+        </div>
+        <!-- Status summary -->
+        <div class="grid grid-cols-3 gap-4 mb-5">
+          <div class="card p-4 flex items-center gap-4">
+            <div class="w-12 h-12 bg-accent-100 rounded-xl flex items-center justify-center">
+              <i data-lucide="check-circle" class="w-6 h-6 text-accent-600"></i>
+            </div>
+            <div><div class="text-2xl font-bold text-accent-700">6</div><div class="text-sm text-surface-400">空闲</div></div>
+          </div>
+          <div class="card p-4 flex items-center gap-4">
+            <div class="w-12 h-12 bg-warn-100 rounded-xl flex items-center justify-center">
+              <i data-lucide="user" class="w-6 h-6 text-warn-600"></i>
+            </div>
+            <div><div class="text-2xl font-bold text-warn-600">4</div><div class="text-sm text-surface-400">占用中</div></div>
+          </div>
+          <div class="card p-4 flex items-center gap-4">
+            <div class="w-12 h-12 bg-surface-100 rounded-xl flex items-center justify-center">
+              <i data-lucide="x-circle" class="w-6 h-6 text-surface-400"></i>
+            </div>
+            <div><div class="text-2xl font-bold text-surface-500">2</div><div class="text-sm text-surface-400">停用</div></div>
+          </div>
+        </div>
+        <!-- Meeting Room Grid -->
+        <div class="grid grid-cols-4 gap-4" id="meeting-grid"></div>
+      </div>
+
+      <!-- ====== BUSINESS PUBLIC PAGE ====== -->
+      <div id="page-business-public" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">公开见客业务</h2>
+            <p class="text-sm text-surface-400 mt-1">叫号全流程管控，实时更新排队状态</p>
+          </div>
+          <div class="flex gap-2">
+            <div class="card px-4 py-2 flex items-center gap-3">
+              <div class="text-center"><div class="text-xs text-surface-400">当前号</div><div class="text-xl font-bold text-primary-600" id="current-num">A-018</div></div>
+              <div class="w-px h-10 bg-surface-200"></div>
+              <div class="text-center"><div class="text-xs text-surface-400">等待</div><div class="text-xl font-bold text-warn-600">23</div></div>
+            </div>
+            <button id="call-next-btn" class="btn btn-primary text-base px-6">
+              <i data-lucide="phone-call" class="w-5 h-5"></i> 叫下一号
+            </button>
+          </div>
+        </div>
+        <!-- Filter -->
+        <div class="card p-4 mb-4 flex gap-3 flex-wrap">
+          <div class="relative flex-1 min-w-48">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+            <input type="text" placeholder="搜索号码/姓名..." class="form-input pl-9" />
+          </div>
+          <select class="form-input form-select w-36">
+            <option>全部状态</option><option>等待中</option><option>叫号中</option><option>已完成</option><option>已过号</option><option>已作废</option>
+          </select>
+          <select class="form-input form-select w-40">
+            <option>全部业务员</option><option>王小明</option><option>李晓华</option><option>张云</option>
+          </select>
+          <button class="btn btn-primary"><i data-lucide="search" class="w-4 h-4"></i> 查询</button>
+          <button class="btn btn-outline"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置</button>
+        </div>
+        <!-- Queue table -->
+        <div class="card overflow-hidden">
+          <table class="data-table w-full">
+            <thead><tr>
+              <th>排号</th><th>客户姓名</th><th>手机号</th><th>厂商</th><th>排号时间</th><th>等待时长</th><th>洽谈室</th><th>状态</th><th>操作</th>
+            </tr></thead>
+            <tbody id="public-queue-body"></tbody>
+          </table>
+          <div class="p-4 border-t border-surface-100 flex items-center justify-between text-sm text-surface-400">
+            <span>共 <strong class="text-surface-700">23</strong> 条等待中</span>
+            <div class="flex gap-1">
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+              <button class="w-7 h-7 flex items-center justify-center text-xs font-medium bg-primary-600 text-white rounded-lg">1</button>
+              <button class="w-7 h-7 flex items-center justify-center text-xs text-surface-500 hover:bg-surface-100 rounded-lg">2</button>
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== BUSINESS APPOINT PAGE ====== -->
+      <div id="page-business-appoint" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">专点见客预约</h2>
+            <p class="text-sm text-surface-400 mt-1">预约登记、叫号处理与业务员筛选</p>
+          </div>
+          <button id="add-appoint-btn" class="btn btn-primary">
+            <i data-lucide="calendar-plus" class="w-4 h-4"></i> 新增预约
+          </button>
+        </div>
+        <div class="card p-4 mb-4 flex gap-3 flex-wrap">
+          <div class="relative flex-1 min-w-48">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+            <input type="text" placeholder="搜索客户姓名/手机..." class="form-input pl-9" />
+          </div>
+          <select class="form-input form-select w-40"><option>全部业务员</option><option>王小明</option><option>李晓华</option><option>张云</option></select>
+          <select class="form-input form-select w-36"><option>全部状态</option><option>待处理</option><option>叫号中</option><option>已完成</option></select>
+          <input type="date" class="form-input w-44" />
+          <button class="btn btn-primary"><i data-lucide="search" class="w-4 h-4"></i> 查询</button>
+          <button class="btn btn-outline"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置</button>
+        </div>
+        <div class="card overflow-hidden">
+          <table class="data-table w-full">
+            <thead><tr>
+              <th>预约号</th><th>客户姓名</th><th>手机号</th><th>预约时间</th><th>对接业务员</th><th>洽谈室</th><th>备注</th><th>状态</th><th>操作</th>
+            </tr></thead>
+            <tbody id="appoint-queue-body"></tbody>
+          </table>
+          <div class="p-4 border-t border-surface-100 flex items-center justify-between text-sm text-surface-400">
+            <span>共 <strong class="text-surface-700">15</strong> 条预约</span>
+            <div class="flex gap-1">
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+              <button class="w-7 h-7 flex items-center justify-center text-xs font-medium bg-primary-600 text-white rounded-lg">1</button>
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== QUEUE SELF PAGE ====== -->
+      <div id="page-queue-self" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">自助排号管理</h2>
+            <p class="text-sm text-surface-400 mt-1">客户自助排号操作与队列实时管理</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-12 gap-5">
+          <!-- Numbering form -->
+          <div class="col-span-4">
+            <div class="card p-6">
+              <h3 class="font-semibold text-surface-800 mb-5 flex items-center gap-2">
+                <i data-lucide="ticket" class="w-5 h-5 text-primary-600"></i> 排号登记
+              </h3>
+              <div class="space-y-4">
+                <div>
+                  <label class="form-label">选择洽谈室</label>
+                  <select id="self-room" class="form-input form-select">
+                    <option value="">请选择洽谈室</option>
+                    <option>A1 - 洽谈室A1</option>
+                    <option>A2 - 洽谈室A2</option>
+                    <option>B1 - 洽谈室B1</option>
+                    <option>B2 - 洽谈室B2</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label">客户手机号</label>
+                  <input id="self-phone" type="text" placeholder="点击输入，弹出数字键盘" class="form-input cursor-pointer" readonly />
+                  <!-- Number Keyboard -->
+                  <div id="num-keyboard" class="mt-3 hidden">
+                    <div class="grid grid-cols-3 gap-2 mb-2" id="num-keys"></div>
+                    <div class="flex gap-2">
+                      <button class="keyboard-key flex-1" data-key="0">0</button>
+                      <button class="keyboard-key flex-1" data-key="del">
+                        <i data-lucide="delete" class="w-4 h-4 mx-auto"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <label class="form-label">厂商名称</label>
+                  <input id="self-company" type="text" placeholder="点击输入，弹出手写键盘" class="form-input cursor-pointer" readonly />
+                  <!-- Handwrite Keyboard -->
+                  <div id="hw-keyboard" class="mt-3 hidden">
+                    <div class="grid grid-cols-9 gap-1.5 mb-2" id="hw-keys"></div>
+                    <div class="grid grid-cols-9 gap-1.5 mb-2" id="hw-keys2"></div>
+                    <div class="grid grid-cols-7 gap-1.5" id="hw-keys3"></div>
+                  </div>
+                </div>
+                <button id="print-ticket-btn" class="btn btn-primary w-full justify-center py-3">
+                  <i data-lucide="printer" class="w-5 h-5"></i> 排号打印
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Queue list -->
+          <div class="col-span-8 card p-5">
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="font-semibold text-surface-800">实时排号队列</h3>
+              <div class="flex gap-2">
+                <select class="form-input form-select w-32 text-xs py-1.5">
+                  <option>全部状态</option><option>等待中</option><option>叫号中</option><option>已完成</option>
+                </select>
+                <button class="btn btn-outline text-xs py-1.5 px-3"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> 刷新</button>
+                <button class="btn btn-outline text-xs py-1.5 px-3"><i data-lucide="layers" class="w-3.5 h-3.5"></i> 批量操作</button>
+              </div>
+            </div>
+            <table class="data-table w-full">
+              <thead><tr>
+                <th><input type="checkbox" class="w-4 h-4" /></th>
+                <th>排序</th><th>号码</th><th>客户姓名</th><th>手机号</th><th>厂商名称</th><th>等待时间</th><th>状态</th><th>调整顺序</th>
+              </tr></thead>
+              <tbody id="self-queue-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== QUEUE DISPLAY PAGE ====== -->
+      <div id="page-queue-display" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">排号显示大屏</h2>
+            <p class="text-sm text-surface-400 mt-1">大屏展示内容配置与控制管理</p>
+          </div>
+          <div class="flex gap-3 items-center">
+            <div class="flex items-center gap-2">
+              <span class="text-sm text-surface-500">大屏状态</span>
+              <button id="display-toggle" class="relative inline-flex w-12 h-6 rounded-full bg-accent-500 transition-colors cursor-pointer">
+                <span class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform translate-x-6"></span>
+              </button>
+              <span class="text-sm font-medium text-accent-600" id="display-status">已开启</span>
+            </div>
+            <button class="btn btn-primary"><i data-lucide="external-link" class="w-4 h-4"></i> 预览大屏</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-5">
+          <!-- Config Panel -->
+          <div class="card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4">大屏配置</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="form-label">大屏标题</label>
+                <input type="text" value="排号叫号系统" class="form-input" />
+              </div>
+              <div>
+                <label class="form-label">叫号提示音</label>
+                <select class="form-input form-select">
+                  <option>提示音1（叮咚）</option><option>提示音2（铃声）</option><option>语音播报</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">显示列数</label>
+                <div class="flex gap-2">
+                  <button class="flex-1 py-2 rounded-lg border border-surface-200 text-sm font-medium bg-surface-50 hover:bg-primary-50 hover:border-primary-300 transition-colors">2列</button>
+                  <button class="flex-1 py-2 rounded-lg border border-primary-400 text-sm font-medium bg-primary-50 text-primary-700">3列</button>
+                  <button class="flex-1 py-2 rounded-lg border border-surface-200 text-sm font-medium bg-surface-50 hover:bg-primary-50 hover:border-primary-300 transition-colors">4列</button>
+                </div>
+              </div>
+              <div>
+                <label class="form-label">滚动速度</label>
+                <input type="range" min="1" max="5" value="3" class="w-full accent-primary-600" />
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="form-label mb-0">显示等待人数</span>
+                <button class="relative inline-flex w-10 h-5 rounded-full bg-accent-500 transition-colors cursor-pointer">
+                  <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform translate-x-5"></span>
+                </button>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="form-label mb-0">显示叫号时间</span>
+                <button class="relative inline-flex w-10 h-5 rounded-full bg-accent-500 transition-colors cursor-pointer">
+                  <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform translate-x-5"></span>
+                </button>
+              </div>
+              <button class="btn btn-primary w-full justify-center">
+                <i data-lucide="save" class="w-4 h-4"></i> 保存配置
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview -->
+          <div class="card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4">大屏预览</h3>
+            <div class="display-screen p-6">
+              <div class="text-center mb-6">
+                <h1 class="text-2xl font-bold text-white">排号叫号系统</h1>
+                <p class="text-blue-300 text-sm mt-1" id="display-time-preview">2025-01-15 14:32:06</p>
+              </div>
+              <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-white bg-opacity-10 rounded-xl p-4 border border-white border-opacity-10 text-center">
+                  <div class="text-xs text-blue-300 mb-2">当前叫号</div>
+                  <div class="queue-num text-yellow-400">A-018</div>
+                  <div class="text-blue-200 text-xs mt-2">洽谈室 A3</div>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-xl p-4 border border-white border-opacity-10 text-center">
+                  <div class="text-xs text-blue-300 mb-2">等待人数</div>
+                  <div class="queue-num text-white">23</div>
+                  <div class="text-blue-200 text-xs mt-2">人等候</div>
+                </div>
+                <div class="bg-white bg-opacity-10 rounded-xl p-4 border border-white border-opacity-10 text-center">
+                  <div class="text-xs text-blue-300 mb-2">今日完成</div>
+                  <div class="queue-num text-green-400">97</div>
+                  <div class="text-blue-200 text-xs mt-2">已办结</div>
+                </div>
+              </div>
+              <!-- Ticker -->
+              <div class="bg-black bg-opacity-30 rounded-xl p-3 flex gap-2 items-center">
+                <span class="bg-yellow-500 text-black text-xs font-bold px-2 py-0.5 rounded flex-shrink-0">滚动</span>
+                <div class="text-blue-200 text-sm overflow-hidden">请 A-018 号客户携带相关材料前往 A3 洽谈室，请 B-005 号准备...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== PAGE MINI INDEX ====== -->
+      <div id="page-page-mini-index" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">小程序首页配置</h2>
+            <p class="text-sm text-surface-400 mt-1">可视化配置小程序首页内容，修改即时生效</p>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-outline"><i data-lucide="eye" class="w-4 h-4"></i> 预览</button>
+            <button class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> 发布配置</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-5">
+          <!-- Carousel config -->
+          <div class="card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4 flex items-center gap-2"><i data-lucide="image" class="w-4 h-4 text-primary-600"></i> 轮播图配置</h3>
+            <div class="space-y-3">
+              <div class="border border-dashed border-surface-300 rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-colors">
+                <i data-lucide="plus" class="w-6 h-6 text-surface-400"></i>
+                <span class="text-sm text-surface-400">添加轮播图</span>
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-200">
+                <div class="w-14 h-10 bg-gradient-to-r from-primary-400 to-primary-600 rounded-lg flex-shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-surface-700 truncate">排号指引图</div>
+                  <div class="text-xs text-surface-400">已启用</div>
+                </div>
+                <button class="btn-icon"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-danger-500"></i></button>
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-200">
+                <div class="w-14 h-10 bg-gradient-to-r from-accent-400 to-accent-600 rounded-lg flex-shrink-0"></div>
+                <div class="flex-1 min-w-0">
+                  <div class="text-sm font-medium text-surface-700 truncate">活动宣传图</div>
+                  <div class="text-xs text-surface-400">已启用</div>
+                </div>
+                <button class="btn-icon"><i data-lucide="trash-2" class="w-3.5 h-3.5 text-danger-500"></i></button>
+              </div>
+            </div>
+          </div>
+          <!-- Notice config -->
+          <div class="card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4 flex items-center gap-2"><i data-lucide="megaphone" class="w-4 h-4 text-warn-500"></i> 公告通知</h3>
+            <div class="space-y-3">
+              <div>
+                <label class="form-label">公告内容</label>
+                <textarea class="form-input h-24 resize-none" placeholder="输入公告内容...">欢迎使用自助排号系统，请保持手机畅通，收到叫号短信后请在5分钟内到场。</textarea>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm text-surface-500">公告显示</span>
+                <button class="relative inline-flex w-10 h-5 rounded-full bg-accent-500 cursor-pointer">
+                  <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow translate-x-5"></span>
+                </button>
+              </div>
+              <button class="btn btn-primary w-full justify-center"><i data-lucide="save" class="w-4 h-4"></i> 保存公告</button>
+            </div>
+          </div>
+          <!-- Quick entries -->
+          <div class="card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4 flex items-center gap-2"><i data-lucide="grid" class="w-4 h-4 text-purple-600"></i> 快捷入口配置</h3>
+            <div class="space-y-2">
+              <div class="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-200">
+                <div class="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center"><i data-lucide="ticket" class="w-4 h-4 text-primary-600"></i></div>
+                <span class="text-sm font-medium flex-1">自助排号</span>
+                <input type="checkbox" class="w-4 h-4" checked />
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-200">
+                <div class="w-8 h-8 bg-accent-100 rounded-lg flex items-center justify-center"><i data-lucide="clock" class="w-4 h-4 text-accent-600"></i></div>
+                <span class="text-sm font-medium flex-1">查看排号</span>
+                <input type="checkbox" class="w-4 h-4" checked />
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-200">
+                <div class="w-8 h-8 bg-warn-100 rounded-lg flex items-center justify-center"><i data-lucide="calendar" class="w-4 h-4 text-warn-600"></i></div>
+                <span class="text-sm font-medium flex-1">预约办理</span>
+                <input type="checkbox" class="w-4 h-4" checked />
+              </div>
+              <div class="flex items-center gap-3 p-3 bg-surface-50 rounded-xl border border-surface-200">
+                <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center"><i data-lucide="help-circle" class="w-4 h-4 text-purple-600"></i></div>
+                <span class="text-sm font-medium flex-1">帮助中心</span>
+                <input type="checkbox" class="w-4 h-4" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== PAGE MINI DISPLAY ====== -->
+      <div id="page-page-mini-display" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">小程序排号页配置</h2>
+            <p class="text-sm text-surface-400 mt-1">配置小程序端排号显示规则与刷新策略</p>
+          </div>
+          <button class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> 保存配置</button>
+        </div>
+        <div class="grid grid-cols-2 gap-5">
+          <div class="card p-6 space-y-5">
+            <h3 class="font-semibold text-surface-800">显示规则配置</h3>
+            <div>
+              <label class="form-label">等待提醒方式</label>
+              <select class="form-input form-select">
+                <option>APP推送通知</option><option>短信提醒</option><option>APP + 短信</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">提前叫号提醒（前N位提醒）</label>
+              <div class="flex gap-2 items-center">
+                <input type="number" value="3" class="form-input w-24" />
+                <span class="text-sm text-surface-500">位时发送提醒</span>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">叫号失效时间</label>
+              <div class="flex gap-2 items-center">
+                <input type="number" value="5" class="form-input w-24" />
+                <span class="text-sm text-surface-500">分钟后自动过号</span>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">排号页标题</label>
+              <input type="text" value="我的排号" class="form-input" />
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-surface-600">显示当前叫号号码</span>
+              <button class="relative inline-flex w-10 h-5 rounded-full bg-accent-500 cursor-pointer">
+                <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow translate-x-5"></span>
+              </button>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-surface-600">显示预估等待时间</span>
+              <button class="relative inline-flex w-10 h-5 rounded-full bg-accent-500 cursor-pointer">
+                <span class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow translate-x-5"></span>
+              </button>
+            </div>
+          </div>
+          <div class="card p-6 space-y-5">
+            <h3 class="font-semibold text-surface-800">刷新频率配置</h3>
+            <div>
+              <label class="form-label">数据刷新模式</label>
+              <div class="space-y-2">
+                <label class="flex items-center gap-3 p-3 rounded-xl border border-primary-300 bg-primary-50 cursor-pointer">
+                  <input type="radio" name="refresh-mode" checked class="accent-primary-600" />
+                  <div>
+                    <div class="text-sm font-medium text-surface-700">实时推送（WebSocket）</div>
+                    <div class="text-xs text-surface-400">毫秒级响应，推荐高并发场景</div>
+                  </div>
+                </label>
+                <label class="flex items-center gap-3 p-3 rounded-xl border border-surface-200 cursor-pointer hover:border-primary-200">
+                  <input type="radio" name="refresh-mode" class="accent-primary-600" />
+                  <div>
+                    <div class="text-sm font-medium text-surface-700">轮询刷新</div>
+                    <div class="text-xs text-surface-400">定时请求接口更新数据</div>
+                  </div>
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">轮询间隔（秒）</label>
+              <div class="flex gap-2 items-center">
+                <input type="range" min="3" max="60" value="10" class="flex-1 accent-primary-600" />
+                <span class="w-12 text-sm text-center font-medium text-primary-600">10s</span>
+              </div>
+            </div>
+            <div>
+              <label class="form-label">适配场景</label>
+              <div class="grid grid-cols-3 gap-2">
+                <button class="py-2 rounded-lg border border-primary-400 bg-primary-50 text-sm font-medium text-primary-700">门店现场</button>
+                <button class="py-2 rounded-lg border border-surface-200 text-sm text-surface-500 hover:border-primary-300">展会活动</button>
+                <button class="py-2 rounded-lg border border-surface-200 text-sm text-surface-500 hover:border-primary-300">政务大厅</button>
+              </div>
+            </div>
+            <div class="p-4 bg-surface-50 rounded-xl border border-surface-200">
+              <div class="flex items-center gap-2 mb-2">
+                <i data-lucide="info" class="w-4 h-4 text-primary-600"></i>
+                <span class="text-sm font-medium text-surface-700">同步状态</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="pulse-dot w-2 h-2 bg-accent-500 rounded-full inline-block"></span>
+                <span class="text-xs text-surface-500">与小程序数据实时同步中，最后同步：刚刚</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== SYSTEM ROLE PAGE ====== -->
+      <div id="page-system-role" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">角色管理</h2>
+            <p class="text-sm text-surface-400 mt-1">配置系统角色与权限分级管控</p>
+          </div>
+          <button id="add-role-btn" class="btn btn-primary"><i data-lucide="plus" class="w-4 h-4"></i> 新增角色</button>
+        </div>
+        <div class="grid grid-cols-12 gap-5">
+          <!-- Role list -->
+          <div class="col-span-4 card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4">角色列表</h3>
+            <div class="space-y-2" id="role-list">
+              <div class="p-3 rounded-xl bg-primary-50 border border-primary-200 cursor-pointer">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 bg-primary-600 rounded-lg flex items-center justify-center"><i data-lucide="crown" class="w-3.5 h-3.5 text-white"></i></div>
+                    <span class="text-sm font-semibold text-primary-700">超级管理员</span>
+                  </div>
+                  <span class="badge badge-blue">全部权限</span>
+                </div>
+                <div class="text-xs text-surface-400 mt-1.5 ml-9">1 名用户</div>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-50 border border-surface-200 cursor-pointer hover:border-primary-200 hover:bg-primary-50 transition-colors">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 bg-accent-500 rounded-lg flex items-center justify-center"><i data-lucide="user-check" class="w-3.5 h-3.5 text-white"></i></div>
+                    <span class="text-sm font-semibold text-surface-700">业务员</span>
+                  </div>
+                  <span class="badge badge-green">部分权限</span>
+                </div>
+                <div class="text-xs text-surface-400 mt-1.5 ml-9">8 名用户</div>
+              </div>
+              <div class="p-3 rounded-xl bg-surface-50 border border-surface-200 cursor-pointer hover:border-primary-200 hover:bg-primary-50 transition-colors">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 bg-warn-500 rounded-lg flex items-center justify-center"><i data-lucide="eye" class="w-3.5 h-3.5 text-white"></i></div>
+                    <span class="text-sm font-semibold text-surface-700">只读访客</span>
+                  </div>
+                  <span class="badge badge-orange">只读权限</span>
+                </div>
+                <div class="text-xs text-surface-400 mt-1.5 ml-9">3 名用户</div>
+              </div>
+            </div>
+          </div>
+          <!-- Permission config -->
+          <div class="col-span-8 card p-5">
+            <h3 class="font-semibold text-surface-800 mb-4">权限配置 — <span class="text-primary-600">超级管理员</span></h3>
+            <div class="space-y-3" id="perm-tree">
+              <!-- filled by JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ====== SYSTEM USER PAGE ====== -->
+      <div id="page-system-user" class="page slide-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-xl font-bold text-surface-900">用户管理</h2>
+            <p class="text-sm text-surface-400 mt-1">后台账号管理与权限分配</p>
+          </div>
+          <button id="add-user-btn" class="btn btn-primary"><i data-lucide="user-plus" class="w-4 h-4"></i> 新增用户</button>
+        </div>
+        <div class="card p-4 mb-4 flex gap-3">
+          <div class="relative flex-1 max-w-xs">
+            <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+            <input type="text" placeholder="搜索用户名/姓名..." class="form-input pl-9" />
+          </div>
+          <select class="form-input form-select w-36"><option>全部角色</option><option>超级管理员</option><option>业务员</option><option>只读访客</option></select>
+          <select class="form-input form-select w-32"><option>全部状态</option><option>启用</option><option>停用</option></select>
+          <button class="btn btn-primary"><i data-lucide="search" class="w-4 h-4"></i> 查询</button>
+          <button class="btn btn-outline"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> 重置</button>
+        </div>
+        <div class="card overflow-hidden">
+          <table class="data-table w-full">
+            <thead><tr>
+              <th>用户编号</th><th>用户名</th><th>姓名</th><th>角色</th><th>手机号</th><th>最后登录</th><th>状态</th><th>操作</th>
+            </tr></thead>
+            <tbody id="user-table-body"></tbody>
+          </table>
+          <div class="p-4 border-t border-surface-100 flex items-center justify-between text-sm text-surface-400">
+            <span>共 <strong class="text-surface-700">12</strong> 名用户</span>
+            <div class="flex gap-1">
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-left" class="w-3.5 h-3.5"></i></button>
+              <button class="w-7 h-7 flex items-center justify-center text-xs font-medium bg-primary-600 text-white rounded-lg">1</button>
+              <button class="btn-icon w-7 h-7"><i data-lucide="chevron-right" class="w-3.5 h-3.5"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<!-- ====== MODALS ====== -->
+
+<!-- Call Ticket Modal -->
+<div id="modal-call" class="modal-overlay">
+  <div class="modal-box p-8">
+    <div class="text-center">
+      <div class="w-20 h-20 bg-gradient-to-br from-primary-500 to-primary-700 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <i data-lucide="phone-call" class="w-9 h-9 text-white"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-surface-900 mb-1">叫号成功</h3>
+      <p class="text-surface-400 mb-6">请通知客户前往对应洽谈室</p>
+      <div class="bg-primary-50 border border-primary-200 rounded-2xl p-6 mb-6">
+        <div class="text-5xl font-extrabold text-primary-700 mb-2" id="modal-num">A-019</div>
+        <div class="text-surface-500 text-sm">→ 洽谈室 <strong class="text-surface-700" id="modal-room">B2</strong></div>
+      </div>
+      <div class="flex gap-3">
+        <button id="modal-call-close" class="btn btn-outline flex-1 justify-center py-3">关闭</button>
+        <button class="btn btn-primary flex-1 justify-center py-3"><i data-lucide="printer" class="w-4 h-4"></i> 重新打印</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Print Ticket Modal -->
+<div id="modal-print" class="modal-overlay">
+  <div class="modal-box p-8">
+    <div class="text-center">
+      <div class="w-20 h-20 bg-gradient-to-br from-accent-500 to-accent-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+        <i data-lucide="ticket" class="w-9 h-9 text-white"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-surface-900 mb-1">排号成功</h3>
+      <p class="text-surface-400 mb-6">排号单已生成，请打印给客户</p>
+      <div class="bg-surface-50 border border-surface-200 rounded-2xl p-6 mb-6 text-left">
+        <div class="flex justify-between mb-3">
+          <span class="text-surface-400 text-sm">排号号码</span>
+          <span class="text-2xl font-extrabold text-primary-700" id="print-num">A-022</span>
+        </div>
+        <div class="flex justify-between mb-3">
+          <span class="text-surface-400 text-sm">洽谈室</span>
+          <span class="font-semibold text-surface-700" id="print-room">A1</span>
+        </div>
+        <div class="flex justify-between mb-3">
+          <span class="text-surface-400 text-sm">厂商名称</span>
+          <span class="font-semibold text-surface-700" id="print-company">—</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-surface-400 text-sm">排号时间</span>
+          <span class="font-semibold text-surface-700" id="print-time">—</span>
+        </div>
+      </div>
+      <div class="flex gap-3">
+        <button id="modal-print-close" class="btn btn-outline flex-1 justify-center py-3">关闭</button>
+        <button class="btn btn-primary flex-1 justify-center py-3"><i data-lucide="printer" class="w-4 h-4"></i> 确认打印</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Customer Modal -->
+<div id="modal-customer" class="modal-overlay">
+  <div class="modal-box">
+    <div class="p-6 border-b border-surface-100">
+      <h3 class="text-lg font-bold text-surface-900">新增客户资料</h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="form-label">客户姓名 *</label><input type="text" class="form-input" placeholder="请输入姓名" /></div>
+        <div><label class="form-label">手机号 *</label><input type="text" class="form-input" placeholder="请输入手机号" /></div>
+        <div><label class="form-label">公司/厂商名称</label><input type="text" class="form-input" placeholder="请输入公司名称" /></div>
+        <div><label class="form-label">性别</label><select class="form-input form-select"><option>男</option><option>女</option><option>不填</option></select></div>
+        <div class="col-span-2"><label class="form-label">备注</label><textarea class="form-input h-20 resize-none" placeholder="备注信息..."></textarea></div>
+      </div>
+    </div>
+    <div class="p-6 border-t border-surface-100 flex gap-3 justify-end">
+      <button id="modal-customer-close" class="btn btn-outline">取消</button>
+      <button class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Meeting Room Modal -->
+<div id="modal-meeting" class="modal-overlay">
+  <div class="modal-box">
+    <div class="p-6 border-b border-surface-100">
+      <h3 class="text-lg font-bold text-surface-900">新增洽谈室</h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="form-label">洽谈室编号 *</label><input type="text" class="form-input" placeholder="如：A1" /></div>
+        <div><label class="form-label">洽谈室名称 *</label><input type="text" class="form-input" placeholder="如：洽谈室A1" /></div>
+        <div><label class="form-label">容纳人数</label><input type="number" class="form-input" placeholder="4" value="4" /></div>
+        <div><label class="form-label">初始状态</label><select class="form-input form-select"><option>空闲</option><option>停用</option></select></div>
+        <div class="col-span-2"><label class="form-label">备注</label><textarea class="form-input h-20 resize-none" placeholder="备注信息..."></textarea></div>
+      </div>
+    </div>
+    <div class="p-6 border-t border-surface-100 flex gap-3 justify-end">
+      <button id="modal-meeting-close" class="btn btn-outline">取消</button>
+      <button class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Appointment Modal -->
+<div id="modal-appoint" class="modal-overlay">
+  <div class="modal-box">
+    <div class="p-6 border-b border-surface-100">
+      <h3 class="text-lg font-bold text-surface-900">新增预约</h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="form-label">客户姓名 *</label><input type="text" class="form-input" placeholder="请输入姓名" /></div>
+        <div><label class="form-label">手机号 *</label><input type="text" class="form-input" placeholder="请输入手机号" /></div>
+        <div><label class="form-label">预约日期 *</label><input type="date" class="form-input" /></div>
+        <div><label class="form-label">预约时间 *</label><input type="time" class="form-input" /></div>
+        <div><label class="form-label">对接业务员 *</label><select class="form-input form-select"><option>王小明</option><option>李晓华</option><option>张云</option></select></div>
+        <div><label class="form-label">厂商名称</label><input type="text" class="form-input" placeholder="请输入厂商名称" /></div>
+        <div class="col-span-2"><label class="form-label">备注需求</label><textarea class="form-input h-20 resize-none" placeholder="特殊需求或备注..."></textarea></div>
+      </div>
+    </div>
+    <div class="p-6 border-t border-surface-100 flex gap-3 justify-end">
+      <button id="modal-appoint-close" class="btn btn-outline">取消</button>
+      <button class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="modal-user" class="modal-overlay">
+  <div class="modal-box">
+    <div class="p-6 border-b border-surface-100">
+      <h3 class="text-lg font-bold text-surface-900">新增用户</h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="form-label">用户名 *</label><input type="text" class="form-input" placeholder="登录账号" /></div>
+        <div><label class="form-label">姓名 *</label><input type="text" class="form-input" placeholder="真实姓名" /></div>
+        <div><label class="form-label">初始密码 *</label><input type="password" class="form-input" placeholder="请输入密码" /></div>
+        <div><label class="form-label">确认密码 *</label><input type="password" class="form-input" placeholder="再次输入密码" /></div>
+        <div><label class="form-label">角色 *</label><select class="form-input form-select"><option>超级管理员</option><option>业务员</option><option>只读访客</option></select></div>
+        <div><label class="form-label">手机号</label><input type="text" class="form-input" placeholder="手机号码" /></div>
+      </div>
+    </div>
+    <div class="p-6 border-t border-surface-100 flex gap-3 justify-end">
+      <button id="modal-user-close" class="btn btn-outline">取消</button>
+      <button class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Enable Meeting Room Modal -->
+<div id="modal-enable-room" class="modal-overlay">
+  <div class="modal-box">
+    <div class="p-6 border-b border-surface-100">
+      <h3 class="text-lg font-bold text-surface-900">启用洽谈室配置</h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-12 gap-4 items-center">
+        <label class="form-label col-span-3">洽谈室</label>
+        <div class="col-span-9">
+          <select class="form-input form-select"><option>A1 - 洽谈室A1</option><option>A2 - 洽谈室A2</option></select>
+        </div>
+      </div>
+      <div class="grid grid-cols-12 gap-4 items-center">
+        <label class="form-label col-span-3">关联客户</label>
+        <div class="col-span-9 relative">
+          <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
+          <input type="text" placeholder="搜索客户姓名/手机号" class="form-input pl-9" />
+        </div>
+      </div>
+      <div class="grid grid-cols-12 gap-4 items-start">
+        <label class="form-label col-span-3 mt-1">备注需求</label>
+        <div class="col-span-9">
+          <textarea class="form-input h-24 resize-none" placeholder="填写使用说明或备注..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="p-6 border-t border-surface-100 flex gap-3 justify-end">
+      <button id="modal-enable-room-close" class="btn btn-outline">取消</button>
+      <button class="btn btn-primary"><i data-lucide="check" class="w-4 h-4"></i> 确认启用</button>
+    </div>
+  </div>
+</div>
+
+<!-- Add Role Modal -->
+<div id="modal-role" class="modal-overlay">
+  <div class="modal-box">
+    <div class="p-6 border-b border-surface-100">
+      <h3 class="text-lg font-bold text-surface-900">新增角色</h3>
+    </div>
+    <div class="p-6 space-y-4">
+      <div><label class="form-label">角色名称 *</label><input type="text" class="form-input" placeholder="请输入角色名称" /></div>
+      <div><label class="form-label">角色描述</label><textarea class="form-input h-20 resize-none" placeholder="描述该角色的职责..."></textarea></div>
+    </div>
+    <div class="p-6 border-t border-surface-100 flex gap-3 justify-end">
+      <button id="modal-role-close" class="btn btn-outline">取消</button>
+      <button class="btn btn-primary"><i data-lucide="save" class="w-4 h-4"></i> 保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+  // ============ DATA ============
+  const meetingRooms = [
+    { id:'A1', name:'洽谈室 A1', status:'idle',     customer:'',     duration:'' },
+    { id:'A2', name:'洽谈室 A2', status:'occupied', customer:'张三', duration:'32分钟' },
+    { id:'A3', name:'洽谈室 A3', status:'occupied', customer:'李四', duration:'48分钟' },
+    { id:'B1', name:'洽谈室 B1', status:'idle',     customer:'',     duration:'' },
+    { id:'B2', name:'洽谈室 B2', status:'occupied', customer:'王五', duration:'15分钟' },
+    { id:'B3', name:'洽谈室 B3', status:'idle',     customer:'',     duration:'' },
+    { id:'C1', name:'洽谈室 C1', status:'disabled', customer:'',     duration:'' },
+    { id:'C2', name:'洽谈室 C2', status:'idle',     customer:'',     duration:'' },
+    { id:'D1', name:'洽谈室 D1', status:'idle',     customer:'',     duration:'' },
+    { id:'D2', name:'洽谈室 D2', status:'occupied', customer:'赵六', duration:'5分钟' },
+    { id:'E1', name:'洽谈室 E1', status:'disabled', customer:'',     duration:'' },
+    { id:'E2', name:'洽谈室 E2', status:'idle',     customer:'',     duration:'' },
+  ];
+
+  const queueData = [
+    { num:'A-018', name:'张三',  phone:'138****1234', company:'华晨汽车', time:'08:32', wait:'42分钟', room:'A3', status:'calling' },
+    { num:'A-019', name:'李四',  phone:'139****5678', company:'宝马集团', time:'08:51', wait:'23分钟', room:'—',  status:'waiting' },
+    { num:'A-020', name:'王五',  phone:'137****9012', company:'奔驰中国', time:'09:05', wait:'9分钟',  room:'—',  status:'waiting' },
+    { num:'B-001', name:'赵六',  phone:'136****3456', company:'大众汽车', time:'09:10', wait:'4分钟',  room:'—',  status:'waiting' },
+    { num:'B-002', name:'钱七',  phone:'135****7890', company:'丰田汽车', time:'09:15', wait:'刚刚',  room:'—',  status:'waiting' },
+    { num:'A-017', name:'孙八',  phone:'134****2345', company:'本田汽车', time:'08:15', wait:'—',    room:'B2',  status:'done' },
+  ];
+
+  const appointData = [
+    { id:'YY-001', name:'刘一',  phone:'138****0001', time:'2025-01-15 09:00', staff:'王小明', room:'A1', note:'VIP客户',    status:'done'    },
+    { id:'YY-002', name:'陈二',  phone:'139****0002', time:'2025-01-15 10:00', staff:'李晓华', room:'A2', note:'携带合同',   status:'calling' },
+    { id:'YY-003', name:'张三',  phone:'137****0003', time:'2025-01-15 11:00', staff:'张云',   room:'—',  note:'',          status:'pending' },
+    { id:'YY-004', name:'李四',  phone:'136****0004', time:'2025-01-15 14:00', staff:'王小明', room:'—',  note:'需要停车位', status:'pending' },
+    { id:'YY-005', name:'王五',  phone:'135****0005', time:'2025-01-16 09:30', staff:'李晓华', room:'—',  note:'',          status:'pending' },
+  ];
+
+  const customerData = [
+    { id:'C00001', name:'张三',  phone:'138****1234', company:'华晨汽车',  count:5,  last:'2025-01-14', status:'normal' },
+    { id:'C00002', name:'李四',  phone:'139****5678', company:'宝马集团',  count:12, last:'2025-01-10', status:'normal' },
+    { id:'C00003', name:'王五',  phone:'137****9012', company:'奔驰中国',  count:3,  last:'2025-01-08', status:'normal' },
+    { id:'C00004', name:'赵六',  phone:'136****3456', company:'大众汽车',  count:8,  last:'2025-01-07', status:'normal' },
+    { id:'C00005', name:'钱七',  phone:'135****7890', company:'丰田汽车',  count:1,  last:'2025-01-15', status:'locked' },
+    { id:'C00006', name:'孙八',  phone:'134****2345', company:'本田汽车',  count:20, last:'2025-01-12', status:'normal' },
+    { id:'C00007', name:'周九',  phone:'133****6789', company:'福特中国',  count:7,  last:'2025-01-05', status:'normal' },
+    { id:'C00008', name:'吴十',  phone:'132****0123', company:'通用汽车',  count:4,  last:'2025-01-03', status:'normal' },
+  ];
+
+  const selfQueueData = [
+    { order:1, num:'A-019', name:'李四',  phone:'139****5678', company:'宝马集团', wait:'23分钟', status:'waiting' },
+    { order:2, num:'A-020', name:'王五',  phone:'137****9012', company:'奔驰中国', wait:'9分钟',  status:'waiting' },
+    { order:3, num:'B-001', name:'赵六',  phone:'136****3456', company:'大众汽车', wait:'4分钟',  status:'waiting' },
+    { order:4, num:'B-002', name:'钱七',  phone:'135****7890', company:'丰田汽车', wait:'刚刚',   status:'waiting' },
+  ];
+
+  const userData = [
+    { id:'U001', username:'admin',    name:'超级管理员', role:'超级管理员', phone:'138****0000', lastLogin:'2025-01-15 14:30', status:'active' },
+    { id:'U002', username:'wangxm',   name:'王小明',    role:'业务员',     phone:'139****0001', lastLogin:'2025-01-15 09:15', status:'active' },
+    { id:'U003', username:'lixh',     name:'李晓华',    role:'业务员',     phone:'137****0002', lastLogin:'2025-01-15 10:40', status:'active' },
+    { id:'U004', username:'zhangy',   name:'张云',      role:'业务员',     phone:'136****0003', lastLogin:'2025-01-14 16:00', status:'active' },
+    { id:'U005', username:'viewer01', name:'访客用户1',  role:'只读访客',   phone:'135****0004', lastLogin:'2025-01-13 11:00', status:'disabled' },
+  ];
+
+  const permTree = [
+    { name:'首页', icon:'layout-dashboard', checked:true,  btns:['查看'] },
+    { name:'客户资料', icon:'users',  checked:true, btns:['查看','新增','编辑','删除','导出'] },
+    { name:'洽谈室管理', icon:'door-open', checked:true, btns:['查看','新增','编辑','删除','启用'] },
+    { name:'公开见客业务', icon:'user-check', checked:true, btns:['查看','叫号','完成','过号','作废'] },
+    { name:'专点见客预约', icon:'calendar-check', checked:true, btns:['查看','新增','叫号','完成'] },
+    { name:'自助排号管理', icon:'ticket', checked:true, btns:['查看','排号','调整'] },
+    { name:'排号显示大屏', icon:'monitor', checked:true, btns:['查看','配置','控制'] },
+    { name:'小程序配置', icon:'smartphone', checked:true, btns:['查看','配置'] },
+    { name:'角色管理', icon:'shield', checked:true, btns:['查看','新增','编辑','删除','权限'] },
+    { name:'用户管理', icon:'user-cog', checked:true, btns:['查看','新增','编辑','删除','重置密码'] },
+  ];
+
+  // ============ PAGE NAVIGATION ============
+  const pages = document.querySelectorAll('.page');
+  const sidebarItems = document.querySelectorAll('.sidebar-item[data-page]');
+  const breadcrumbEl = document.getElementById('breadcrumb-text');
+
+  const pageNames = {
+    'home':'首页', 'customer':'客户资料', 'meeting':'洽谈室管理',
+    'business-public':'公开见客业务', 'business-appoint':'专点见客预约',
+    'queue-self':'自助排号管理', 'queue-display':'排号显示大屏',
+    'page-mini-index':'小程序首页配置', 'page-mini-display':'小程序排号页配置',
+    'system-role':'角色管理', 'system-user':'用户管理'
+  };
+
+  function showPage(pageId) {
+    pages.forEach(p => p.classList.remove('active'));
+    sidebarItems.forEach(i => i.classList.remove('active'));
+    const target = document.getElementById('page-' + pageId);
+    if (target) {
+      target.classList.add('active');
+      target.classList.remove('slide-in');
+      void target.offsetWidth;
+      target.classList.add('slide-in');
+    }
+    sidebarItems.forEach(i => {
+      if (i.dataset.page === pageId) i.classList.add('active');
+    });
+    breadcrumbEl.textContent = pageNames[pageId] || pageId;
+  }
+
+  sidebarItems.forEach(item => {
+    item.addEventListener('click', () => showPage(item.dataset.page));
+  });
+
+  // Quick action buttons (home page)
+  document.querySelectorAll('.quick-action-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (btn.dataset.page) showPage(btn.dataset.page);
+    });
+  });
+
+  // ============ LOGIN ============
+  const loginBtn = document.getElementById('login-btn');
+  const loginPage = document.getElementById('login-page');
+  const mainApp = document.getElementById('main-app');
+  const togglePwd = document.getElementById('toggle-pwd');
+  const pwdInput = document.getElementById('login-password');
+
+  loginBtn.addEventListener('click', () => {
+    const u = document.getElementById('login-username').value.trim();
+    const p = document.getElementById('login-password').value.trim();
+    if (u && p) {
+      loginPage.style.display = 'none';
+      mainApp.style.display = 'flex';
+      initAll();
+    }
+  });
+
+  togglePwd.addEventListener('click', () => {
+    const isText = pwdInput.type === 'text';
+    pwdInput.type = isText ? 'password' : 'text';
+  });
+
+  // Logout
+  document.getElementById('logout-btn').addEventListener('click', () => {
+    mainApp.style.display = 'none';
+    loginPage.style.display = 'flex';
+  });
+
+  // ============ NOTIFICATIONS ============
+  const notifBtn = document.getElementById('notif-btn');
+  const notifPanel = document.getElementById('notif-panel');
+  notifBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    notifPanel.classList.toggle('open');
+  });
+  document.addEventListener('click', () => notifPanel.classList.remove('open'));
+  notifPanel.addEventListener('click', e => e.stopPropagation());
+
+  // ============ MODALS ============
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+  const modalPairs = [
+    ['add-customer-btn', 'modal-customer', 'modal-customer-close'],
+    ['add-meeting-btn',  'modal-meeting',  'modal-meeting-close'],
+    ['add-appoint-btn',  'modal-appoint',  'modal-appoint-close'],
+    ['add-user-btn',     'modal-user',     'modal-user-close'],
+    ['add-role-btn',     'modal-role',     'modal-role-close'],
+    ['modal-call-close', null,             'modal-call-close'],
+    ['modal-print-close',null,             'modal-print-close'],
+    ['modal-enable-room-close',null,       'modal-enable-room-close'],
+  ];
+
+  document.getElementById('add-customer-btn')?.addEventListener('click', () => openModal('modal-customer'));
+  document.getElementById('modal-customer-close')?.addEventListener('click', () => closeModal('modal-customer'));
+  document.getElementById('add-meeting-btn')?.addEventListener('click', () => openModal('modal-meeting'));
+  document.getElementById('modal-meeting-close')?.addEventListener('click', () => closeModal('modal-meeting'));
+  document.getElementById('add-appoint-btn')?.addEventListener('click', () => openModal('modal-appoint'));
+  document.getElementById('modal-appoint-close')?.addEventListener('click', () => closeModal('modal-appoint'));
+  document.getElementById('add-user-btn')?.addEventListener('click', () => openModal('modal-user'));
+  document.getElementById('modal-user-close')?.addEventListener('click', () => closeModal('modal-user'));
+  document.getElementById('add-role-btn')?.addEventListener('click', () => openModal('modal-role'));
+  document.getElementById('modal-role-close')?.addEventListener('click', () => closeModal('modal-role'));
+  document.getElementById('modal-call-close')?.addEventListener('click', () => closeModal('modal-call'));
+  document.getElementById('modal-print-close')?.addEventListener('click', () => closeModal('modal-print'));
+  document.getElementById('modal-enable-room-close')?.addEventListener('click', () => closeModal('modal-enable-room'));
+
+  // Close modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === this) this.classList.remove('open');
+    });
+  });
+
+  // ============ CALL NEXT ============
+  let callCounter = 18;
+  const rooms = ['A1','A2','A3','B1','B2','B3'];
+  document.getElementById('call-next-btn')?.addEventListener('click', () => {
+    callCounter++;
+    const prefix = callCounter % 3 === 0 ? 'B' : 'A';
+    const num = prefix + '-0' + callCounter;
+    const room = rooms[callCounter % rooms.length];
+    document.getElementById('modal-num').textContent = num;
+    document.getElementById('modal-room').textContent = room;
+    document.getElementById('current-num').textContent = num;
+    openModal('modal-call');
+  });
+
+  // ============ CHART ============
+  function initChart() {
+    const ctx = document.getElementById('chart-trend');
+    if (!ctx) return;
+    const hours = ['8时','9时','10时','11时','12时','13时','14时','15时','16时','17时'];
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: hours,
+        datasets: [{
+          label: '排号量',
+          data: [4, 12, 18, 22, 8, 6, 16, 21, 14, 7],
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37,99,235,0.08)',
+          fill: true,
+          tension: 0.45,
+          pointBackgroundColor: '#2563eb',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+          borderWidth: 2.5
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 11 }, color: '#94a3b8' } },
+          y: { grid: { color: '#f1f5f9' }, ticks: { font: { size: 11 }, color: '#94a3b8' }, beginAtZero: true }
+        }
+      }
+    });
+  }
+
+  // ============ HOME MEETING GRID ============
+  function renderHomeMeetingGrid() {
+    const el = document.getElementById('home-meeting-grid');
+    if (!el) return;
+    const statusMap = { idle:'空闲', occupied:'占用中', disabled:'停用' };
+    const colorMap = { idle:'bg-accent-50 border-accent-200', occupied:'bg-warn-50 border-warn-200', disabled:'bg-surface-100 border-surface-200' };
+    const dotMap   = { idle:'bg-accent-500', occupied:'bg-warn-500 pulse-dot', disabled:'bg-surface-400' };
+    const textMap  = { idle:'text-accent-700', occupied:'text-warn-700', disabled:'text-surface-500' };
+
+    el.innerHTML = meetingRooms.slice(0,8).map(r => {
+      return '<div class="p-3 rounded-xl border ' + colorMap[r.status] + '">' +
+        '<div class="flex items-center justify-between mb-1.5">' +
+          '<span class="font-semibold text-sm text-surface-700">' + r.id + '</span>' +
+          '<span class="inline-block w-2 h-2 rounded-full ' + dotMap[r.status] + '"></span>' +
+        '</div>' +
+        '<div class="text-xs ' + textMap[r.status] + ' font-medium">' + statusMap[r.status] + '</div>' +
+        (r.customer ? '<div class="text-xs text-surface-400 mt-0.5 truncate">' + r.customer + ' · ' + r.duration + '</div>' : '<div class="text-xs text-surface-300 mt-0.5">—</div>') +
+      '</div>';
+    }).join('');
+  }
+
+  // ============ HOME QUEUE TABLE ============
+  function renderHomeQueueTable() {
+    const tbody = document.getElementById('home-queue-body');
+    if (!tbody) return;
+    const statusBadge = { calling:'<span class="badge badge-blue">叫号中</span>', waiting:'<span class="badge badge-orange">等待中</span>', done:'<span class="badge badge-green">已完成</span>' };
+    tbody.innerHTML = queueData.map(r => {
+      return '<tr>' +
+        '<td class="font-semibold text-primary-700">' + r.num + '</td>' +
+        '<td>' + r.name + '</td>' +
+        '<td><span class="text-xs text-surface-500">' + r.company + '</span></td>' +
+        '<td class="text-surface-400 text-xs">' + r.wait + '</td>' +
+        '<td>' + statusBadge[r.status] + '</td>' +
+        '<td>' +
+          '<div class="flex gap-1">' +
+            (r.status === 'waiting' ? '<button class="btn btn-success text-xs py-1 px-2">叫号</button>' : '') +
+            (r.status === 'calling' ? '<button class="btn btn-primary text-xs py-1 px-2">完成</button>' : '') +
+            '<button class="btn btn-outline text-xs py-1 px-2">详情</button>' +
+          '</div>' +
+        '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  // ============ CUSTOMER TABLE ============
+  function renderCustomerTable() {
+    const tbody = document.getElementById('customer-table-body');
+    if (!tbody) return;
+    tbody.innerHTML = customerData.map(r => {
+      const statusBadge = r.status === 'normal' ? '<span class="badge badge-green">正常</span>' : '<span class="badge badge-red">锁定</span>';
+      return '<tr>' +
+        '<td><input type="checkbox" class="w-4 h-4" /></td>' +
+        '<td class="text-xs text-surface-400 font-mono">' + r.id + '</td>' +
+        '<td class="font-medium">' + r.name + '</td>' +
+        '<td class="text-surface-500">' + r.phone + '</td>' +
+        '<td>' + r.company + '</td>' +
+        '<td class="font-semibold text-primary-600">' + r.count + '</td>' +
+        '<td class="text-surface-400 text-xs">' + r.last + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td><div class="flex gap-1">' +
+          '<button class="btn-icon"><i data-lucide="eye" style="width:14px;height:14px;"></i></button>' +
+          '<button class="btn-icon"><i data-lucide="edit-2" style="width:14px;height:14px;"></i></button>' +
+          '<button class="btn-icon"><i data-lucide="trash-2" style="width:14px;height:14px;" class="text-danger-500"></i></button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+    lucide.createIcons();
+  }
+
+  // ============ MEETING ROOM GRID ============
+  function renderMeetingGrid() {
+    const el = document.getElementById('meeting-grid');
+    if (!el) return;
+    const statusMap = { idle:'空闲', occupied:'占用中', disabled:'停用' };
+    const headerMap = { idle:'from-accent-400 to-accent-600', occupied:'from-warn-400 to-warn-600', disabled:'from-surface-300 to-surface-400' };
+    const badgeMap  = { idle:'badge-green', occupied:'badge-orange', disabled:'badge-gray' };
+
+    el.innerHTML = meetingRooms.map(r => {
+      return '<div class="card overflow-hidden">' +
+        '<div class="h-1.5 bg-gradient-to-r ' + headerMap[r.status] + '"></div>' +
+        '<div class="p-4">' +
+          '<div class="flex items-center justify-between mb-3">' +
+            '<span class="font-bold text-surface-800">' + r.name + '</span>' +
+            '<span class="badge ' + badgeMap[r.status] + '">' + statusMap[r.status] + '</span>' +
+          '</div>' +
+          (r.customer ? '<div class="text-sm text-surface-600 mb-1"><span class="text-surface-400">客户：</span>' + r.customer + '</div>' : '') +
+          (r.duration ? '<div class="text-sm text-surface-600 mb-3"><span class="text-surface-400">时长：</span>' + r.duration + '</div>' : '<div class="text-sm text-surface-300 mb-3">暂无使用</div>') +
+          '<div class="flex gap-2">' +
+            (r.status === 'idle'     ? '<button class="btn btn-primary text-xs py-1.5 flex-1 justify-center enable-room-btn">启用</button><button class="btn btn-outline text-xs py-1.5 flex-1 justify-center">停用</button>' : '') +
+            (r.status === 'occupied' ? '<button class="btn btn-outline text-xs py-1.5 flex-1 justify-center">释放</button><button class="btn btn-danger text-xs py-1.5 flex-1 justify-center">强制结束</button>' : '') +
+            (r.status === 'disabled' ? '<button class="btn btn-success text-xs py-1.5 flex-1 justify-center">恢复</button><button class="btn btn-outline text-xs py-1.5 flex-1 justify-center">编辑</button>' : '') +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    document.querySelectorAll('.enable-room-btn').forEach(btn => {
+      btn.addEventListener('click', () => openModal('modal-enable-room'));
+    });
+    lucide.createIcons();
+  }
+
+  // ============ PUBLIC QUEUE TABLE ============
+  function renderPublicQueue() {
+    const tbody = document.getElementById('public-queue-body');
+    if (!tbody) return;
+    const statusBadge = { calling:'<span class="badge badge-blue">叫号中</span>', waiting:'<span class="badge badge-orange">等待中</span>', done:'<span class="badge badge-green">已完成</span>' };
+    tbody.innerHTML = queueData.map(r => {
+      return '<tr>' +
+        '<td class="font-bold text-primary-700">' + r.num + '</td>' +
+        '<td>' + r.name + '</td>' +
+        '<td class="text-surface-400">' + r.phone + '</td>' +
+        '<td class="text-surface-500 text-xs">' + r.company + '</td>' +
+        '<td class="text-surface-400 text-xs">' + r.time + '</td>' +
+        '<td class="text-surface-500">' + r.wait + '</td>' +
+        '<td>' + (r.room !== '—' ? '<span class="badge badge-purple">' + r.room + '</span>' : '<span class="text-surface-300">—</span>') + '</td>' +
+        '<td>' + statusBadge[r.status] + '</td>' +
+        '<td><div class="flex gap-1">' +
+          (r.status === 'waiting' ? '<button class="btn btn-primary text-xs py-1 px-2">叫号</button><button class="btn btn-outline text-xs py-1 px-2">过号</button><button class="btn btn-danger text-xs py-1 px-2">作废</button>' : '') +
+          (r.status === 'calling' ? '<button class="btn btn-success text-xs py-1 px-2">完成</button><button class="btn btn-outline text-xs py-1 px-2">重排</button>' : '') +
+          (r.status === 'done' ? '<button class="btn btn-outline text-xs py-1 px-2">详情</button>' : '') +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  // ============ APPOINT TABLE ============
+  function renderAppointTable() {
+    const tbody = document.getElementById('appoint-queue-body');
+    if (!tbody) return;
+    const statusBadge = { pending:'<span class="badge badge-orange">待处理</span>', calling:'<span class="badge badge-blue">叫号中</span>', done:'<span class="badge badge-green">已完成</span>' };
+    tbody.innerHTML = appointData.map(r => {
+      return '<tr>' +
+        '<td class="font-mono text-xs text-surface-400">' + r.id + '</td>' +
+        '<td class="font-medium">' + r.name + '</td>' +
+        '<td class="text-surface-400 text-xs">' + r.phone + '</td>' +
+        '<td class="text-surface-500 text-xs">' + r.time + '</td>' +
+        '<td><span class="badge badge-purple">' + r.staff + '</span></td>' +
+        '<td>' + (r.room !== '—' ? '<span class="badge badge-blue">' + r.room + '</span>' : '<span class="text-surface-300">—</span>') + '</td>' +
+        '<td class="text-surface-400 text-xs">' + (r.note || '—') + '</td>' +
+        '<td>' + statusBadge[r.status] + '</td>' +
+        '<td><div class="flex gap-1">' +
+          (r.status === 'pending' ? '<button class="btn btn-primary text-xs py-1 px-2">叫号</button><button class="btn btn-outline text-xs py-1 px-2">编辑</button>' : '') +
+          (r.status === 'calling' ? '<button class="btn btn-success text-xs py-1 px-2">完成</button>' : '') +
+          (r.status === 'done' ? '<button class="btn btn-outline text-xs py-1 px-2">详情</button>' : '') +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  // ============ SELF QUEUE TABLE ============
+  function renderSelfQueue() {
+    const tbody = document.getElementById('self-queue-body');
+    if (!tbody) return;
+    tbody.innerHTML = selfQueueData.map((r, i) => {
+      return '<tr class="drag-row">' +
+        '<td><input type="checkbox" class="w-4 h-4" /></td>' +
+        '<td class="font-bold text-surface-700">' + r.order + '</td>' +
+        '<td class="font-bold text-primary-700">' + r.num + '</td>' +
+        '<td>' + r.name + '</td>' +
+        '<td class="text-surface-400 text-xs">' + r.phone + '</td>' +
+        '<td class="text-surface-500 text-xs">' + r.company + '</td>' +
+        '<td class="text-surface-500">' + r.wait + '</td>' +
+        '<td><span class="badge badge-orange">等待中</span></td>' +
+        '<td><div class="flex gap-1">' +
+          '<button class="btn-icon" title="上移"><i data-lucide="chevron-up" style="width:14px;height:14px;"></i></button>' +
+          '<button class="btn-icon" title="下移"><i data-lucide="chevron-down" style="width:14px;height:14px;"></i></button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+    lucide.createIcons();
+  }
+
+  // ============ USER TABLE ============
+  function renderUserTable() {
+    const tbody = document.getElementById('user-table-body');
+    if (!tbody) return;
+    const roleBadge = { '超级管理员':'badge-blue', '业务员':'badge-green', '只读访客':'badge-orange' };
+    tbody.innerHTML = userData.map(r => {
+      const statusBadge = r.status === 'active' ? '<span class="badge badge-green">启用</span>' : '<span class="badge badge-red">停用</span>';
+      return '<tr>' +
+        '<td class="font-mono text-xs text-surface-400">' + r.id + '</td>' +
+        '<td class="font-medium text-surface-700">' + r.username + '</td>' +
+        '<td>' + r.name + '</td>' +
+        '<td><span class="badge ' + (roleBadge[r.role]||'badge-gray') + '">' + r.role + '</span></td>' +
+        '<td class="text-surface-400 text-xs">' + r.phone + '</td>' +
+        '<td class="text-surface-400 text-xs">' + r.lastLogin + '</td>' +
+        '<td>' + statusBadge + '</td>' +
+        '<td><div class="flex gap-1">' +
+          '<button class="btn-icon"><i data-lucide="edit-2" style="width:14px;height:14px;"></i></button>' +
+          '<button class="btn btn-outline text-xs py-1 px-2">重置密码</button>' +
+          (r.status === 'active' ? '<button class="btn btn-danger text-xs py-1 px-2">停用</button>' : '<button class="btn btn-success text-xs py-1 px-2">启用</button>') +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+    lucide.createIcons();
+  }
+
+  // ============ PERMISSION TREE ============
+  function renderPermTree() {
+    const el = document.getElementById('perm-tree');
+    if (!el) return;
+    el.innerHTML = permTree.map(p => {
+      const btns = p.btns.map(b => '<label class="flex items-center gap-1 text-xs text-surface-500 cursor-pointer"><input type="checkbox" class="w-3 h-3 accent-primary-600" checked /> ' + b + '</label>').join('');
+      return '<div class="p-3 rounded-xl border border-surface-100 bg-surface-50">' +
+        '<div class="flex items-center justify-between mb-2">' +
+          '<div class="flex items-center gap-2">' +
+            '<i data-lucide="' + p.icon + '" style="width:15px;height:15px;" class="text-primary-500"></i>' +
+            '<span class="text-sm font-medium text-surface-700">' + p.name + '</span>' +
+          '</div>' +
+          '<input type="checkbox" class="w-4 h-4 accent-primary-600" ' + (p.checked?'checked':'') + ' />' +
+        '</div>' +
+        '<div class="flex flex-wrap gap-3 ml-5">' + btns + '</div>' +
+      '</div>';
+    }).join('');
+    lucide.createIcons();
+  }
+
+  // ============ NUMERIC KEYBOARD ============
+  const selfPhone  = document.getElementById('self-phone');
+  const numKb      = document.getElementById('num-keyboard');
+  const numKeys    = document.getElementById('num-keys');
+  const selfCompany = document.getElementById('self-company');
+  const hwKb       = document.getElementById('hw-keyboard');
+  const hwKeys     = document.getElementById('hw-keys');
+  const hwKeys2    = document.getElementById('hw-keys2');
+  const hwKeys3    = document.getElementById('hw-keys3');
+
+  // Build number keyboard
+  const digits = ['1','2','3','4','5','6','7','8','9'];
+  if (numKeys) {
+    numKeys.innerHTML = digits.map(d =>
+      '<button class="keyboard-key" data-key="' + d + '">' + d + '</button>'
+    ).join('');
+  }
+
+  // Build handwrite keyboard rows
+  const row1 = 'QWERTYUIO'.split('');
+  const row2 = 'PASDFGHJK'.split('');
+  const row3 = 'ZXCVBNM'.split('');
+  if (hwKeys)  hwKeys.innerHTML  = row1.map(c => '<button class="keyboard-key hw-key text-xs">' + c + '</button>').join('');
+  if (hwKeys2) hwKeys2.innerHTML = row2.map(c => '<button class="keyboard-key hw-key text-xs">' + c + '</button>').join('');
+  if (hwKeys3) hwKeys3.innerHTML = row3.map(c => '<button class="keyboard-key hw-key text-xs">' + c + '</button>').join('') +
+    '<button class="keyboard-key hw-key text-xs col-span-2" data-key="del"><i data-lucide="delete" style="width:14px;height:14px;display:inline-block;vertical-align:middle;"></i></button>';
+
+  let activeInput = null;
+
+  if (selfPhone) {
+    selfPhone.addEventListener('click', () => {
+      activeInput = 'phone';
+      numKb.classList.toggle('hidden');
+      hwKb.classList.add('hidden');
+      lucide.createIcons();
+    });
+  }
+  if (selfCompany) {
+    selfCompany.addEventListener('click', () => {
+      activeInput = 'company';
+      hwKb.classList.toggle('hidden');
+      numKb.classList.add('hidden');
+      lucide.createIcons();
+    });
+  }
+
+  // Delegate key click
+  document.addEventListener('click', function(e) {
+    const key = e.target.closest('[data-key]');
+    if (key && (numKb?.contains(key) || hwKb?.contains(key))) {
+      const k = key.dataset.key;
+      if (activeInput === 'phone' && selfPhone) {
+        if (k === 'del') selfPhone.value = selfPhone.value.slice(0,-1);
+        else if (selfPhone.value.length < 11) selfPhone.value += k;
+      }
+    }
+    const hwKey = e.target.closest('.hw-key');
+    if (hwKey && hwKey.dataset.key !== 'del' && activeInput === 'company' && selfCompany) {
+      selfCompany.value += hwKey.textContent.trim();
+    }
+  });
+
+  // ============ PRINT TICKET ============
+  let ticketCounter = 21;
+  document.getElementById('print-ticket-btn')?.addEventListener('click', () => {
+    ticketCounter++;
+    const room = document.getElementById('self-room')?.value || 'A1';
+    const company = selfCompany?.value || '—';
+    const now = new Date();
+    const timeStr = now.getHours() + ':' + String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('print-num').textContent = 'A-0' + ticketCounter;
+    document.getElementById('print-room').textContent = room.split(' ')[0] || room;
+    document.getElementById('print-company').textContent = company;
+    document.getElementById('print-time').textContent = timeStr;
+    openModal('modal-print');
+  });
+
+  // ============ DISPLAY SCREEN CLOCK ============
+  function updateDisplayClock() {
+    const el = document.getElementById('display-time-preview');
+    if (!el) return;
+    const now = new Date();
+    el.textContent = now.toLocaleDateString('zh-CN') + ' ' +
+      String(now.getHours()).padStart(2,'0') + ':' +
+      String(now.getMinutes()).padStart(2,'0') + ':' +
+      String(now.getSeconds()).padStart(2,'0');
+  }
+  const clockInterval = setInterval(updateDisplayClock, 1000);
+  updateDisplayClock();
+
+  // ============ DISPLAY TOGGLE ============
+  const displayToggle = document.getElementById('display-toggle');
+  const displayStatus = document.getElementById('display-status');
+  let displayOn = true;
+  displayToggle?.addEventListener('click', () => {
+    displayOn = !displayOn;
+    if (displayOn) {
+      displayToggle.classList.add('bg-accent-500');
+      displayToggle.classList.remove('bg-surface-300');
+      displayToggle.querySelector('span').classList.add('translate-x-6');
+      displayToggle.querySelector('span').classList.remove('translate-x-0');
+      displayStatus.textContent = '已开启';
+      displayStatus.className = 'text-sm font-medium text-accent-600';
+    } else {
+      displayToggle.classList.remove('bg-accent-500');
+      displayToggle.classList.add('bg-surface-300');
+      displayToggle.querySelector('span').classList.remove('translate-x-6');
+      displayToggle.querySelector('span').classList.add('translate-x-0');
+      displayStatus.textContent = '已关闭';
+      displayStatus.className = 'text-sm font-medium text-surface-400';
+    }
+  });
+
+  // ============ REAL-TIME SIMULATION ============
+  const realtimeMessages = [
+    { icon:'bell', color:'bg-blue-100 text-blue-600', title:'A-022 已排号', sub:'新客户 · 刚刚' },
+    { icon:'check', color:'bg-green-100 text-green-600', title:'A-018 业务完成', sub:'张三 · 刚刚' },
+    { icon:'phone-call', color:'bg-primary-100 text-primary-600', title:'B-003 正在叫号', sub:'刚刚' },
+    { icon:'clock', color:'bg-orange-100 text-orange-500', title:'B2洽谈室超时', sub:'超时10分钟' },
+    { icon:'calendar', color:'bg-purple-100 text-purple-600', title:'新预约：刘一', sub:'明日09:00' },
+  ];
+  let msgIndex = 0;
+  const realtimeInterval = setInterval(() => {
+    const listEl = document.getElementById('realtime-list');
+    if (!listEl) return;
+    const msg = realtimeMessages[msgIndex % realtimeMessages.length];
+    msgIndex++;
+    const div = document.createElement('div');
+    div.className = 'flex gap-2.5 items-start';
+    div.innerHTML = '<div class="w-7 h-7 ' + msg.color + ' rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"><i data-lucide="' + msg.icon + '" style="width:14px;height:14px;"></i></div>' +
+      '<div><div class="text-xs font-medium text-surface-700">' + msg.title + '</div><div class="text-xs text-surface-400">' + msg.sub + '</div></div>';
+    listEl.insertBefore(div, listEl.firstChild);
+    if (listEl.children.length > 5) listEl.removeChild(listEl.lastChild);
+    lucide.createIcons();
+  }, 6000);
+
+  // ============ INIT ALL ============
+  function initAll() {
+    renderHomeMeetingGrid();
+    renderHomeQueueTable();
+    renderCustomerTable();
+    renderMeetingGrid();
+    renderPublicQueue();
+    renderAppointTable();
+    renderSelfQueue();
+    renderUserTable();
+    renderPermTree();
+    setTimeout(initChart, 100);
+    lucide.createIcons();
+  }
+
+  // Keyboard enter login
+  document.getElementById('login-password')?.addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('login-btn').click();
+  });
+});
+</script>
+<script>
+  lucide.createIcons();
+</script>
+</body>
+</html>
