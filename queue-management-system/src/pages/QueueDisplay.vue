@@ -131,7 +131,7 @@ let reconnectTimer = null
 let reconnectInterval = 5000
 
 const getWsUrl = () => {
-  const baseUrl = import.meta.env.VITE_WS_URL || window.location.origin.replace('http', 'ws')
+  const baseUrl = import.meta.env.VITE_WS_URL || (window.location.origin.replace('http', 'ws') + '/ws')
   return baseUrl
 }
 

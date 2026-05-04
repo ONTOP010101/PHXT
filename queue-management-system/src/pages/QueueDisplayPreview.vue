@@ -55,7 +55,7 @@ const ANNOUNCE_DEBOUNCE_MS = 30000
 const recentBatchCall = {}
 
 const getWsUrl = () => {
-  const baseUrl = import.meta.env.VITE_WS_URL || window.location.origin.replace('http', 'ws')
+  const baseUrl = import.meta.env.VITE_WS_URL || (window.location.origin.replace('http', 'ws') + '/ws')
   return baseUrl
 }
 
