@@ -11,7 +11,7 @@
         <div class="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white border-opacity-30">
           <i data-lucide="layers" class="w-10 h-10 text-white"></i>
         </div>
-        <h1 class="text-4xl font-800 mb-3 tracking-tight">排号管理系统</h1>
+        <h1 class="text-4xl font-800 mb-3 tracking-tight">个人排号测试</h1>
         <p class="text-blue-200 text-lg mb-12">Queue Management System</p>
 
         <div class="space-y-5 text-left max-w-xs mx-auto">
@@ -108,7 +108,7 @@
         </div>
 
         <div class="mt-8 pt-6 border-t border-surface-100 text-center text-xs text-surface-400">
-          © 2026 排号管理系统
+          © 2026 个人排号测试
         </div>
       </div>
     </div>

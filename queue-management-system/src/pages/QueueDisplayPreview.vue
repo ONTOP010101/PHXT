@@ -1,7 +1,7 @@
 <template>
   <div id="queue-display-preview" class="h-screen w-screen bg-white flex flex-col items-center justify-center text-surface-900">
     <div class="text-center w-full h-full flex flex-col px-4 py-8">
-      <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 md:mb-16">{{ settings.screenTitle || '排号管理系统' }}</h1>
+      <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 md:mb-16">{{ settings.screenTitle || '个人排号测试' }}</h1>
 
       <div v-if="rooms.length > 0" class="grid gap-2.5 flex-1 w-full" :class="{
         'grid-cols-1': rooms.length === 1,
@@ -34,7 +34,7 @@ import { getMeetingList } from '../api/meeting'
 import { getDisplaySettings } from '../api/display'
 
 const settings = ref({
-  screenTitle: '排号管理系统',
+  screenTitle: '个人排号测试',
   displayMode: 'standard',
   refreshInterval: '10',
   displayCount: 10,
@@ -160,7 +160,7 @@ const loadSettings = async () => {
     const res = await getDisplaySettings()
     if (res.code === 200 && res.data) {
       settings.value = {
-        screenTitle: res.data.screenTitle || '排号管理系统',
+        screenTitle: res.data.screenTitle || '个人排号测试',
         displayMode: 'standard',
         refreshInterval: res.data.refreshInterval || '10',
         displayCount: res.data.displayCount || 10,

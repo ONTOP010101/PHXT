@@ -4,7 +4,7 @@
       <div class="w-8 h-8 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center">
         <Layers class="w-4 h-4 text-white" />
       </div>
-      <span class="font-bold text-surface-900 text-base">排号管理系统</span>
+      <span class="font-bold text-surface-900 text-base">个人排号测试</span>
     </div>
 
     <!-- Breadcrumb -->

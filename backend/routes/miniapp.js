@@ -202,4 +202,54 @@ router.get('/getNotices', async (req, res) => {
   }
 })
 
+// 获取洽谈室列表（小程序用）
+router.get('/rooms', async (req, res) => {
+  try {
+    const meetings = await db.MeetingRoom.findAll({
+      where: { 
+        status: { [db.Sequelize.Op.ne]: 'disabled' } 
+      },
+      order: [['id', 'ASC']]
+    })
+    
+    const rooms = await Promise.all(meetings.map(async (meeting) => {
+      const meetingData = meeting.toJSON()
+      
+      const queues = await db.Queue.findAll({
+        where: { 
+          roomId: meeting.id,
+          completed: false
+        },
+        order: [['createdAt', 'ASC']]
+      })
+      
+      const calledQueues = queues.filter(q => q.status === 'called')
+      const currentQueue = calledQueues.length > 0 ? calledQueues[calledQueues.length - 1] : null
+      const waitingQueues = queues.filter(q => q.status === 'waiting')
+      
+      const currentNum = currentQueue ? currentQueue.queueNumber?.split('_')[1] || '001' : '001'
+      const nextNum = waitingQueues.length > 0 ? waitingQueues[0].queueNumber?.split('_')[1] || '001' : '001'
+      
+      return {
+        id: meetingData.id,
+        name: meetingData.name,
+        current_number: `${meetingData.id}_${currentNum}`,
+        next_number: `${meetingData.id}_${nextNum}`,
+        wait_time: waitingQueues.length > 0 ? Math.max(1, waitingQueues.length * 2) : 0,
+        total: 1000,
+        current: parseInt(currentNum)
+      }
+    }))
+    
+    res.json({
+      code: 200,
+      message: '获取成功',
+      data: rooms
+    })
+  } catch (error) {
+    console.error('获取洽谈室列表失败:', error)
+    res.json({ code: 500, message: '服务器内部错误' })
+  }
+})
+
 module.exports = router

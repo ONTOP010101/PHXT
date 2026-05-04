@@ -4,7 +4,7 @@
       <div class="banner-card">
         <div class="banner-bg"></div>
         <div class="banner-ring"></div>
-        <text class="banner-tag">排号管理系统</text>
+        <text class="banner-tag">个人排号测试</text>
         <text class="banner-title">厂商专属排号服务</text>
         <text class="banner-desc">高效洽谈 · 实时叫号 · 无需等候</text>
       </div>

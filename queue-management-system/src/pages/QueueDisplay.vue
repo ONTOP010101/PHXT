@@ -226,7 +226,7 @@ const colorOptions = [
 ]
 
 const settings = ref({
-  screenTitle: '排号管理系统',
+  screenTitle: '个人排号测试',
   displayMode: 'standard',
   refreshInterval: '10',
   displayCount: 10,
@@ -256,7 +256,7 @@ const loadDisplaySettings = async () => {
     const res = await getDisplaySettings()
     if (res.code === 200 && res.data) {
       settings.value = {
-        screenTitle: res.data.screenTitle || '排号管理系统',
+        screenTitle: res.data.screenTitle || '个人排号测试',
         displayMode: 'standard',
         refreshInterval: res.data.refreshInterval || '10',
         displayCount: res.data.displayCount || 10,
