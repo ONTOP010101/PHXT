@@ -1001,13 +1001,15 @@ const sortedTableData = computed(() => {
 })
 
 const filteredTableData = computed(() => {
+  if (!selectedRoom.value) {
+    return []
+  }
+
   const publicRoomNames = new Set(publicRooms.value.map(room => room.name))
 
   let data = sortedTableData.value.filter(item => publicRoomNames.has(item.roomNumber))
 
-  if (selectedRoom.value) {
-    data = data.filter(item => item.roomNumber === selectedRoom.value)
-  }
+  data = data.filter(item => item.roomNumber === selectedRoom.value)
 
   if (searchKeyword.value) {
     const keyword = searchKeyword.value.toLowerCase().trim()

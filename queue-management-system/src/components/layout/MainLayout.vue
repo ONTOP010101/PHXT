@@ -1,27 +1,22 @@
 <template>
   <div class="flex flex-col min-h-screen">
-    <!-- Top Navbar -->
     <Header :breadcrumb-text="breadcrumbText" @logout="handleLogout" />
 
-    <!-- Body: Sidebar + Content -->
     <div class="flex pt-16" style="min-height: calc(100vh - 0px);">
-      <!-- Sidebar -->
       <Sidebar ref="sidebarRef" />
 
-      <!-- Main Content Area -->
       <main class="main-content flex-1 flex flex-col transition-all duration-300" :style="contentStyle">
-        <!-- 标签页 -->
         <div class="tabs-container border-b border-surface-200 bg-white">
           <div class="tabs-wrapper flex overflow-x-auto">
-            <div 
-              v-for="tab in tabs" 
+            <div
+              v-for="tab in tabs"
               :key="tab.path"
               class="tab-item flex items-center gap-2 px-4 py-3 border-b-2 cursor-pointer transition-all"
               :class="{ active: activeTab === tab.path }"
               @click="switchTab(tab.path)"
             >
               <span class="tab-title">{{ tab.title }}</span>
-              <button 
+              <button
                 class="tab-close p-1 rounded-full hover:bg-surface-100 transition-colors"
                 @click.stop="closeTab(tab.path)"
                 v-if="tab.path !== '/'"
@@ -32,7 +27,6 @@
           </div>
         </div>
 
-        <!-- 页面内容 -->
         <div class="content-container flex-1 p-6 bg-white">
           <component :is="currentComponent" />
         </div>
@@ -47,6 +41,8 @@ import { useRoute, useRouter } from 'vue-router'
 import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
 import HomePage from '../../pages/Home.vue'
+import HomeMenuPage from '../../pages/HomeMenu.vue'
+import MiniAppHomeConfigPage from '../../pages/MiniAppHomeConfig.vue'
 import CustomerPage from '../../pages/Customer.vue'
 import MeetingPage from '../../pages/Meeting.vue'
 import BusinessPublicPage from '../../pages/BusinessPublic.vue'
@@ -61,7 +57,6 @@ const router = useRouter()
 const sidebarRef = ref(null)
 const isSidebarCollapsed = ref(false)
 
-// 标签页管理
 const tabs = ref([
   {
     path: '/',
@@ -70,34 +65,31 @@ const tabs = ref([
 ])
 const activeTab = ref('/')
 
-// 页面标题映射
 const pageTitles = {
   '/': '首页',
+  '/home/menu': '首页(菜单版)',
+  '/mini-app/home-config': '小程序首页配置',
   '/customer': '客户资料',
   '/meeting': '洽谈室管理',
   '/business/public': '公开见客业务',
   '/business/appoint': '专点见客预约',
-  '/queue/self': '自助排号管理',
+  '/queue/self': '内部排号管理',
   '/queue/display': '排号显示大屏',
   '/system/role': '角色管理',
   '/system/user': '用户管理'
 }
 
-// 监听侧边栏折叠状态
 watch(() => sidebarRef.value?.isCollapsed, (newValue) => {
   if (newValue !== undefined) {
     isSidebarCollapsed.value = newValue
   }
 })
 
-// 监听路由变化，添加新标签页
 watch(() => route.path, (newPath) => {
   activeTab.value = newPath
-  
-  // 检查标签页是否已存在
+
   const existingTab = tabs.value.find(tab => tab.path === newPath)
   if (!existingTab) {
-    // 添加新标签页
     tabs.value.push({
       path: newPath,
       title: pageTitles[newPath] || '未知页面'
@@ -105,10 +97,11 @@ watch(() => route.path, (newPath) => {
   }
 })
 
-// 根据路由路径返回对应的组件
 const currentComponent = computed(() => {
   const pathMap = {
     '/': HomePage,
+    '/home/menu': HomeMenuPage,
+    '/mini-app/home-config': MiniAppHomeConfigPage,
     '/customer': CustomerPage,
     '/meeting': MeetingPage,
     '/business/public': BusinessPublicPage,
@@ -125,7 +118,6 @@ const breadcrumbText = computed(() => {
   return pageTitles[route.path] || '首页'
 })
 
-// 计算内容区域样式
 const contentStyle = computed(() => {
   const sidebarWidth = isSidebarCollapsed.value ? 90 : 260
   return {
@@ -134,24 +126,18 @@ const contentStyle = computed(() => {
   }
 })
 
-// 切换标签页
 const switchTab = (path) => {
   router.push(path)
 }
 
-// 关闭标签页
 const closeTab = (path) => {
-  // 首页标签页不能关闭
   if (path === '/') return
-  
-  // 找到标签页索引
+
   const tabIndex = tabs.value.findIndex(tab => tab.path === path)
   if (tabIndex === -1) return
-  
-  // 移除标签页
+
   tabs.value.splice(tabIndex, 1)
-  
-  // 如果关闭的是当前活跃标签页，切换到上一个标签页
+
   if (path === activeTab.value) {
     const newActiveTab = tabs.value[tabs.value.length - 1] || tabs.value[0]
     router.push(newActiveTab.path)
@@ -163,9 +149,7 @@ const handleLogout = () => {
   router.push('/login')
 }
 
-// 初始化
 onMounted(() => {
-  // 确保当前路由对应的标签页存在
   const currentPath = route.path
   if (!tabs.value.find(tab => tab.path === currentPath)) {
     tabs.value.push({
@@ -178,7 +162,6 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* 标签页样式 */
 .tabs-container {
   position: relative;
   z-index: 10;
@@ -256,7 +239,6 @@ onMounted(() => {
   border: 1px solid #ef4444;
 }
 
-/* 内容容器样式 */
 .content-container {
   border-radius: 0 0 8px 8px;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);

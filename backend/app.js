@@ -17,6 +17,7 @@ const userRoutes = require('./routes/user')
 const roleRoutes = require('./routes/role')
 const printRoutes = require('./routes/print')
 const displayRoutes = require('./routes/display')
+const miniappRoutes = require('./routes/miniapp')
 
 app.use('/api/auth', authRoutes)
 app.use('/api/customer', customerRoutes)
@@ -27,6 +28,7 @@ app.use('/api/user', userRoutes)
 app.use('/api/role', roleRoutes)
 app.use('/api/print', printRoutes)
 app.use('/api/display', displayRoutes)
+app.use('/api/miniapp', miniappRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ code: 200, message: 'Server is running' })

@@ -55,7 +55,7 @@ const ANNOUNCE_DEBOUNCE_MS = 30000
 const recentBatchCall = {}
 
 const getWsUrl = () => {
-  return 'ws://localhost:3001'
+  return 'wss://api.xinyuex.com.cn'
 }
 
 const connectWebSocket = () => {

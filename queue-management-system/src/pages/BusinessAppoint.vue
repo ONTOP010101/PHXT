@@ -190,7 +190,12 @@
             <p class="text-xs text-surface-400 mt-1">货号支持多个，用英文逗号分隔（如：HH001,HH002）</p>
           </div>
           <div v-if="batchImportMode === 'file'">
-            <label class="block text-sm font-medium text-surface-600 mb-1">选择文件（支持Excel、CSV、TXT）</label>
+            <div class="flex items-center gap-3 mb-2">
+              <label class="text-sm font-medium text-surface-600">选择文件（支持Excel、CSV、TXT）</label>
+              <button class="btn text-sm btn-outline" style="border-color: #10b981; color: #059669;" @click="exportImportTemplate">
+                导出模版
+              </button>
+            </div>
             <input type="file" accept=".xlsx,.xls,.csv,.txt" class="form-input w-full" @change="handleBatchFileUpload" />
             <p class="text-xs text-surface-400 mt-1">支持Excel(.xlsx/.xls)、CSV、TXT文件，自动识别"厂商名称"、"手机号"和"货号"列</p>
           </div>
@@ -561,6 +566,27 @@ const parseBatchImportText = () => {
     return
   }
   batchImportPreview.value = parseBatchText(batchImportText.value)
+}
+
+const exportImportTemplate = () => {
+  const wb = XLSX.utils.book_new()
+  const wsData = [
+    ['厂商名称', '手机号', '货号'],
+    ['示例厂商', '13800138000', 'HH001,HH002'],
+    ['示例厂商B', '13676141011', 'h666'],
+    ['示例厂商B', '13676141011', 'h777'],
+    ['示例厂商B', '13676141011', 'h888'],
+    ['示例厂商B', '13676141011', 'h999'],
+    ['示例厂商B', '13676141011', 'h1111']
+  ]
+  const ws = XLSX.utils.aoa_to_sheet(wsData)
+  ws['!cols'] = [
+    { wch: 20 },
+    { wch: 15 },
+    { wch: 20 }
+  ]
+  XLSX.utils.book_append_sheet(wb, ws, '厂商导入模版')
+  XLSX.writeFile(wb, '厂商导入模版.xlsx')
 }
 
 const handleBatchFileUpload = (event) => {

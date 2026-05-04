@@ -153,10 +153,14 @@
           />
         </div>
         <div class="menu-group-content pl-7" v-show="openMenus.page || isCollapsed">
-          <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer">
+          <router-link
+            to="/mini-app/home-config"
+            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer"
+            :class="{ active: currentRoute === '/mini-app/home-config' }"
+          >
             <Smartphone class="flex-shrink-0" />
             <span class="text-sm" v-if="!isCollapsed">小程序首页配置</span>
-          </div>
+          </router-link>
           <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer">
             <Sliders class="flex-shrink-0" />
             <span class="text-sm" v-if="!isCollapsed">小程序排号页配置</span>

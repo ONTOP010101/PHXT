@@ -3,6 +3,8 @@ import { useUserStore } from '../store/modules/user'
 import LoginPage from '../pages/Login.vue'
 import MainLayout from '../components/layout/MainLayout.vue'
 import HomePage from '../pages/Home.vue'
+import HomeMenuPage from '../pages/HomeMenu.vue'
+import MiniAppHomeConfigPage from '../pages/MiniAppHomeConfig.vue'
 import CustomerPage from '../pages/Customer.vue'
 import MeetingPage from '../pages/Meeting.vue'
 import BusinessPublicPage from '../pages/BusinessPublic.vue'
@@ -44,6 +46,16 @@ const routes = [
         path: '',
         name: 'Home',
         component: HomePage
+      },
+      {
+        path: 'home/menu',
+        name: 'HomeMenu',
+        component: HomeMenuPage
+      },
+      {
+        path: 'mini-app/home-config',
+        name: 'MiniAppHomeConfig',
+        component: MiniAppHomeConfigPage
       },
       {
         path: 'customer',
@@ -98,17 +110,16 @@ const router = createRouter({
   routes
 })
 
-// 路由守卫
 router.beforeEach(async (to, from) => {
   const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true'
   const token = localStorage.getItem('token')
-  
+
   if (to.name !== 'Login' && !isLoggedIn) {
     return { name: 'Login' }
   } else if (to.name === 'Login' && isLoggedIn) {
     return { name: 'Home' }
   }
-  
+
   if (to.name !== 'Login' && isLoggedIn && token) {
     try {
       const response = await fetch('/api/auth/verify', {
@@ -129,7 +140,7 @@ router.beforeEach(async (to, from) => {
         }
         return { name: 'Login' }
       }
-      
+
       if (data.data && data.data.user) {
         const userStore = useUserStore()
         userStore.userInfo = data.data.user

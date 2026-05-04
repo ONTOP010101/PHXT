@@ -131,7 +131,7 @@ let reconnectTimer = null
 let reconnectInterval = 5000
 
 const getWsUrl = () => {
-  return 'ws://localhost:3001'
+  return 'wss://api.xinyuex.com.cn'
 }
 
 const connectWebSocket = () => {

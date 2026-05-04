@@ -30,6 +30,8 @@ db.MeetingRoom = require('./MeetingRoom')(sequelize, Sequelize)
 db.Queue = require('./Queue')(sequelize, Sequelize)
 db.Token = require('./Token')(sequelize, Sequelize)
 db.DisplaySetting = require('./DisplaySetting')(sequelize, Sequelize)
+db.MiniAppBanner = require('./MiniAppBanner')(sequelize, Sequelize)
+db.MiniAppNotice = require('./MiniAppNotice')(sequelize, Sequelize)
 
 db.Queue.belongsTo(db.Customer, { foreignKey: 'customerId', as: 'customer' })
 db.Queue.belongsTo(db.Company, { foreignKey: 'companyId', as: 'company' })

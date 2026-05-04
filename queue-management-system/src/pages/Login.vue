@@ -124,9 +124,9 @@ const router = useRouter()
 const userStore = useUserStore()
 
 const form = ref({
-  username: 'admin',
-  password: '123456',
-  remember: true
+  username: '',
+  password: '',
+  remember: false
 })
 
 const showPwd = ref(false)
