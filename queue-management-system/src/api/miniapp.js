@@ -58,3 +58,33 @@ export const getMiniAppHomeData = () => {
     method: 'get'
   })
 }
+
+export const getMiniAppUsers = (params) => {
+  return request({
+    url: '/miniapp/users',
+    method: 'get',
+    params
+  })
+}
+
+export const getMiniAppUserDetail = (id) => {
+  return request({
+    url: `/miniapp/users/${id}`,
+    method: 'get'
+  })
+}
+
+export const updateMiniAppUser = (data) => {
+  return request({
+    url: '/miniapp/users/update',
+    method: 'post',
+    data
+  })
+}
+
+export const deleteMiniAppUser = (id) => {
+  return request({
+    url: `/miniapp/users/delete/${id}`,
+    method: 'post'
+  })
+}

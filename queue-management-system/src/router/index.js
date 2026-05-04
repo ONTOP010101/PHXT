@@ -5,6 +5,7 @@ import MainLayout from '../components/layout/MainLayout.vue'
 import HomePage from '../pages/Home.vue'
 import HomeMenuPage from '../pages/HomeMenu.vue'
 import MiniAppHomeConfigPage from '../pages/MiniAppHomeConfig.vue'
+import MiniAppUserCenterPage from '../pages/MiniAppUserCenter.vue'
 import CustomerPage from '../pages/Customer.vue'
 import MeetingPage from '../pages/Meeting.vue'
 import BusinessPublicPage from '../pages/BusinessPublic.vue'
@@ -56,6 +57,11 @@ const routes = [
         path: 'mini-app/home-config',
         name: 'MiniAppHomeConfig',
         component: MiniAppHomeConfigPage
+      },
+      {
+        path: 'mini-app/user-center',
+        name: 'MiniAppUserCenter',
+        component: MiniAppUserCenterPage
       },
       {
         path: 'customer',

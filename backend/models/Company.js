@@ -13,6 +13,11 @@ module.exports = (sequelize, Sequelize) => {
       type: Sequelize.STRING(20),
       allowNull: false
     },
+    wxid: {
+      type: Sequelize.STRING(100),
+      allowNull: true,
+      defaultValue: ''
+    },
     itemNumber: {
       type: Sequelize.STRING(500),
       allowNull: true,

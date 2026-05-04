@@ -161,10 +161,14 @@
             <Smartphone class="flex-shrink-0" />
             <span class="text-sm" v-if="!isCollapsed">小程序首页配置</span>
           </router-link>
-          <div class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer">
+          <router-link
+            to="/mini-app/user-center"
+            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer"
+            :class="{ active: currentRoute === '/mini-app/user-center' }"
+          >
             <Sliders class="flex-shrink-0" />
-            <span class="text-sm" v-if="!isCollapsed">小程序排号页配置</span>
-          </div>
+            <span class="text-sm" v-if="!isCollapsed">小程序用户中心</span>
+          </router-link>
         </div>
       </div>
 

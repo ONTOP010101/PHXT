@@ -252,4 +252,130 @@ router.get('/rooms', async (req, res) => {
   }
 })
 
+// 小程序用户列表
+router.get('/users', async (req, res) => {
+  try {
+    const { page = 1, pageSize = 10, keyword = '' } = req.query
+
+    const where = { status: 1 }
+    if (keyword) {
+      where[db.Sequelize.Op.or] = [
+        { companyName: { [db.Sequelize.Op.like]: `%${keyword}%` } },
+        { phone: { [db.Sequelize.Op.like]: `%${keyword}%` } },
+        { wxid: { [db.Sequelize.Op.like]: `%${keyword}%` } }
+      ]
+    }
+
+    const { count, rows } = await db.Company.findAndCountAll({
+      where,
+      offset: (page - 1) * pageSize,
+      limit: parseInt(pageSize),
+      order: [['createdAt', 'DESC']]
+    })
+
+    res.json({
+      code: 200,
+      message: 'success',
+      data: {
+        list: rows,
+        total: count
+      }
+    })
+  } catch (error) {
+    console.error('获取小程序用户列表失败:', error)
+    res.json({ code: 500, message: '服务器内部错误' })
+  }
+})
+
+// 小程序用户详情
+router.get('/users/:id', async (req, res) => {
+  try {
+    const company = await db.Company.findOne({
+      where: { id: req.params.id, status: 1 }
+    })
+
+    if (!company) {
+      return res.json({ code: 404, message: '用户不存在' })
+    }
+
+    const queueCount = await db.Queue.count({
+      where: { companyId: company.id }
+    })
+
+    const completedCount = await db.Queue.count({
+      where: { companyId: company.id, completed: true }
+    })
+
+    res.json({
+      code: 200,
+      message: 'success',
+      data: {
+        ...company.toJSON(),
+        queueCount,
+        completedCount
+      }
+    })
+  } catch (error) {
+    console.error('获取小程序用户详情失败:', error)
+    res.json({ code: 500, message: '服务器内部错误' })
+  }
+})
+
+// 小程序用户编辑
+router.post('/users/update', async (req, res) => {
+  try {
+    const { id, companyName, phone, wxid } = req.body
+
+    if (!id) {
+      return res.json({ code: 400, message: '缺少用户ID' })
+    }
+
+    const company = await db.Company.findOne({
+      where: { id, status: 1 }
+    })
+
+    if (!company) {
+      return res.json({ code: 404, message: '用户不存在' })
+    }
+
+    await company.update({
+      companyName: companyName !== undefined ? companyName : company.companyName,
+      phone: phone !== undefined ? phone : company.phone,
+      wxid: wxid !== undefined ? wxid : company.wxid
+    })
+
+    res.json({
+      code: 200,
+      message: '更新成功',
+      data: company
+    })
+  } catch (error) {
+    console.error('更新小程序用户失败:', error)
+    res.json({ code: 500, message: '服务器内部错误' })
+  }
+})
+
+// 小程序用户删除
+router.post('/users/delete/:id', async (req, res) => {
+  try {
+    const company = await db.Company.findOne({
+      where: { id: req.params.id, status: 1 }
+    })
+
+    if (!company) {
+      return res.json({ code: 404, message: '用户不存在' })
+    }
+
+    await company.update({ status: 0 })
+
+    res.json({
+      code: 200,
+      message: '删除成功'
+    })
+  } catch (error) {
+    console.error('删除小程序用户失败:', error)
+    res.json({ code: 500, message: '服务器内部错误' })
+  }
+})
+
 module.exports = router

@@ -43,6 +43,7 @@ import Sidebar from './Sidebar.vue'
 import HomePage from '../../pages/Home.vue'
 import HomeMenuPage from '../../pages/HomeMenu.vue'
 import MiniAppHomeConfigPage from '../../pages/MiniAppHomeConfig.vue'
+import MiniAppUserCenterPage from '../../pages/MiniAppUserCenter.vue'
 import CustomerPage from '../../pages/Customer.vue'
 import MeetingPage from '../../pages/Meeting.vue'
 import BusinessPublicPage from '../../pages/BusinessPublic.vue'
@@ -69,6 +70,7 @@ const pageTitles = {
   '/': '首页',
   '/home/menu': '首页(菜单版)',
   '/mini-app/home-config': '小程序首页配置',
+  '/mini-app/user-center': '小程序用户中心',
   '/customer': '客户资料',
   '/meeting': '洽谈室管理',
   '/business/public': '公开见客业务',
@@ -102,6 +104,7 @@ const currentComponent = computed(() => {
     '/': HomePage,
     '/home/menu': HomeMenuPage,
     '/mini-app/home-config': MiniAppHomeConfigPage,
+    '/mini-app/user-center': MiniAppUserCenterPage,
     '/customer': CustomerPage,
     '/meeting': MeetingPage,
     '/business/public': BusinessPublicPage,
