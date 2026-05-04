@@ -394,6 +394,10 @@ router.post('/requeue/:queueId', async (req, res) => {
       return res.json({ code: 400, message: '已完成的排号无法重排' })
     }
 
+    if (queue.status !== 'called') {
+      return res.json({ code: 400, message: '该排号还未被叫号，无法重排' })
+    }
+
     const room = await db.MeetingRoom.findByPk(queue.roomId)
     if (!room) {
       return res.json({ code: 404, message: '洽谈室不存在' })

@@ -1051,6 +1051,11 @@ const handleRequeue = async () => {
     return
   }
 
+  if (!calledNumbers.value.has(item.id)) {
+    showCustomMessage('该厂商还未被叫号，无法重排')
+    return
+  }
+
   try {
     await requeue(item.id)
 
