@@ -956,7 +956,7 @@ const callNext = async () => {
     return
   }
 
-  const unCalledData = data.filter(item => !item.completed && !calledNumbers.value.has(item.id) && item.queueNumber)
+  const unCalledData = data.filter(item => !item.completed && !calledNumbers.value.has(item.id))
 
   if (unCalledData.length === 0) {
     showCustomMessage('暂时没有厂商排号')

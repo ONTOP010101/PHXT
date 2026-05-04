@@ -295,9 +295,48 @@ router.post('/call/:queueId', async (req, res) => {
       return res.json({ code: 400, message: '该排号已被呼叫' })
     }
 
+    if (!queue.queueNumber) {
+      const room = await db.MeetingRoom.findByPk(queue.roomId)
+      const todayStart = new Date(new Date().toDateString())
+      const todayQueues = await db.Queue.findAll({
+        where: {
+          roomId: queue.roomId,
+          status: { [db.Sequelize.Op.ne]: 'cancelled' },
+          createdAt: { [db.Sequelize.Op.gte]: todayStart }
+        }
+      })
+
+      const existingNumbers = todayQueues
+        .filter(q => q.queueNumber && !q.queueNumber.includes('-'))
+        .map(q => parseInt(q.queueNumber.split('_')[1]))
+
+      let nextNum = 1
+      if (existingNumbers.length > 0) {
+        nextNum = Math.max(...existingNumbers) + 1
+      }
+
+      let candidateNumber = `${queue.roomId}_${String(nextNum).padStart(3, '0')}`
+      while (await db.Queue.findOne({ where: { queueNumber: candidateNumber } })) {
+        nextNum++
+        candidateNumber = `${queue.roomId}_${String(nextNum).padStart(3, '0')}`
+      }
+
+      await queue.update({ queueNumber: candidateNumber })
+    }
+
     await queue.update({
       status: 'called',
       calledAt: new Date()
+    })
+
+    const room = await db.MeetingRoom.findByPk(queue.roomId)
+
+    broadcast({
+      type: 'call',
+      roomId: queue.roomId,
+      roomName: room ? room.name : '',
+      queueNumber: queue.queueNumber ? queue.queueNumber.split('_')[1] : '',
+      timestamp: new Date().toISOString()
     })
 
     await broadcastAllRooms()

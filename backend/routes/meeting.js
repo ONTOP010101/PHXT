@@ -31,9 +31,26 @@ router.get('/list', async (req, res) => {
         order: [['createdAt', 'ASC']]
       })
       
-      const calledQueues = queues.filter(q => q.status === 'called')
+      const sortQueuesByNumber = (a, b) => {
+        if (!a.queueNumber) return 1
+        if (!b.queueNumber) return -1
+        const partsA = a.queueNumber.split('_')[1].split('-')
+        const partsB = b.queueNumber.split('_')[1].split('-')
+        const numA = parseInt(partsA[0])
+        const numB = parseInt(partsB[0])
+        if (numA !== numB) return numA - numB
+        const suffixA = partsA.length > 1 ? parseInt(partsA[1]) : 0
+        const suffixB = partsB.length > 1 ? parseInt(partsB[1]) : 0
+        return suffixA - suffixB
+      }
+
+      const calledQueues = queues
+        .filter(q => q.status === 'called')
+        .sort(sortQueuesByNumber)
       const currentQueue = calledQueues.length > 0 ? calledQueues[calledQueues.length - 1] : null
-      const waitingQueues = queues.filter(q => q.status === 'waiting')
+      const waitingQueues = queues
+        .filter(q => q.status === 'waiting')
+        .sort(sortQueuesByNumber)
       
       meetingData.currentNumber = currentQueue ? currentQueue.queueNumber?.split('_')[1] || '000' : '000'
       meetingData.nextNumber = waitingQueues.length > 0 ? waitingQueues[0].queueNumber?.split('_')[1] || '000' : '000'

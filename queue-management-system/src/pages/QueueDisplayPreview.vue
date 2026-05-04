@@ -116,6 +116,10 @@ const handleWebSocketMessage = (data) => {
     if (!isInitialLoad) {
       handleBatchCallAnnounce(data)
     }
+  } else if (data.type === 'call') {
+    if (!isInitialLoad) {
+      handleCallAnnounce(data)
+    }
   } else if (data.type === 'connected') {
     console.log('WebSocket server message:', data.message)
   }
@@ -206,6 +210,19 @@ const setAudioUnlocked = (value) => {
 let isAnnouncing = false
 let dengAudio = null
 
+const compareQueueNumbers = (a, b) => {
+  if (!a || a === '000') return -1
+  if (!b || b === '000') return 1
+  const partsA = a.split('-')
+  const partsB = b.split('-')
+  const numA = parseInt(partsA[0])
+  const numB = parseInt(partsB[0])
+  if (numA !== numB) return numA - numB
+  const suffixA = partsA.length > 1 ? parseInt(partsA[1]) : 0
+  const suffixB = partsB.length > 1 ? parseInt(partsB[1]) : 0
+  return suffixA - suffixB
+}
+
 const checkAndAnnounce = (oldRooms, newRooms) => {
   const roomsToAnnounce = []
   const now = Date.now()
@@ -218,6 +235,11 @@ const checkAndAnnounce = (oldRooms, newRooms) => {
     const newNumber = newRoom.currentNumber
 
     if (oldNumber !== newNumber) {
+      if (newNumber === '000' || (oldNumber && oldNumber !== '000' && compareQueueNumbers(newNumber, oldNumber) <= 0)) {
+        console.log(`号码回退或清空，跳过播报: 房间${newRoom.name}, ${oldNumber} → ${newNumber}`)
+        continue
+      }
+
       const batchInfo = recentBatchCall[newRoom.id]
       if (batchInfo && (now - batchInfo.timestamp < 10000) && batchInfo.lastNumber === newNumber) {
         console.log(`跳过多号并叫触发的单个播报: 房间${newRoom.name}, 号码${newNumber}`)
@@ -261,6 +283,52 @@ const checkAndAnnounce = (oldRooms, newRooms) => {
       }
       console.log('音频未解锁，播报任务已加入队列')
     }
+  }
+}
+
+const handleCallAnnounce = (data) => {
+  const { roomName, queueNumber, roomId } = data
+  const roomNum = roomName.replace('号洽谈室', '')
+  const now = Date.now()
+
+  const lastAnnounced = lastAnnouncedPerRoom[roomId]
+  const isDuplicate = lastAnnounced &&
+    lastAnnounced.number === queueNumber &&
+    (now - lastAnnounced.timestamp < ANNOUNCE_DEBOUNCE_MS)
+
+  if (isDuplicate) {
+    console.log(`跳过重复叫号播报: 房间${roomName}, 号码${queueNumber}`)
+    return
+  }
+
+  lastAnnouncedPerRoom[roomId] = { number: queueNumber, timestamp: now }
+
+  const callRoom = {
+    id: roomId,
+    name: roomName,
+    currentNumber: queueNumber,
+    isBatchCall: false
+  }
+
+  if (isAnnouncing) {
+    const existingIndex = announceQueue.value.findIndex(r => r.id === callRoom.id)
+    if (existingIndex >= 0) {
+      announceQueue.value[existingIndex] = callRoom
+    } else {
+      announceQueue.value.push(callRoom)
+    }
+  } else if (getAudioUnlocked()) {
+    currentAnnouncingRoomId.value = callRoom.id
+    isAnnouncing = true
+    announce(callRoom)
+  } else {
+    const existingIndex = announceQueue.value.findIndex(r => r.id === callRoom.id)
+    if (existingIndex >= 0) {
+      announceQueue.value[existingIndex] = callRoom
+    } else {
+      announceQueue.value.push(callRoom)
+    }
+    console.log('音频未解锁，叫号播报任务已加入队列')
   }
 }
 
@@ -388,7 +456,7 @@ const announce = (room) => {
   if (room.isBatchCall) {
     message = `请${room.firstNumber}号到${room.lastNumber}号，到${roomName}洽谈。`
   } else {
-    const number = room.currentNumber
+    const number = room.currentNumber.replace('-', '杠')
     message = `请${roomNum}杠${number}号厂商，到${roomName}洽谈。`
   }
 
