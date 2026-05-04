@@ -131,7 +131,8 @@ let reconnectTimer = null
 let reconnectInterval = 5000
 
 const getWsUrl = () => {
-  return 'wss://api.xinyuex.com.cn'
+  const baseUrl = import.meta.env.VITE_WS_URL || window.location.origin.replace('http', 'ws')
+  return baseUrl
 }
 
 const connectWebSocket = () => {

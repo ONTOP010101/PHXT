@@ -2,42 +2,12 @@ const express = require('express')
 const router = express.Router()
 const db = require('../models')
 
-const { broadcastRoomUpdate, broadcast } = require('../websocket')
-
-const getRoomQueueInfo = async (roomId) => {
-  const queues = await db.Queue.findAll({
-    where: {
-      roomId,
-      completed: false
-    },
-    order: [['createdAt', 'ASC']]
-  })
-
-  const calledQueues = queues.filter(q => q.status === 'called')
-  const currentQueue = calledQueues.length > 0 ? calledQueues[calledQueues.length - 1] : null
-  const waitingQueues = queues.filter(q => q.status === 'waiting')
-
-  return {
-    currentNumber: currentQueue ? currentQueue.queueNumber?.split('_')[1] || '000' : '000',
-    nextNumber: waitingQueues.length > 0 ? waitingQueues[0].queueNumber?.split('_')[1] || '000' : '000',
-    waitingTime: waitingQueues.length > 0 ? Math.max(1, Math.floor(waitingQueues.length * 2)) : 0
-  }
-}
+const { broadcastRoomUpdate, broadcast, getRoomsData } = require('../websocket')
 
 const broadcastAllRooms = async () => {
   try {
-    const meetings = await db.MeetingRoom.findAll({
-      where: { status: 'occupied' },
-      order: [['id', 'ASC']]
-    })
-
-    const result = await Promise.all(meetings.map(async (meeting) => {
-      const meetingData = meeting.toJSON()
-      const queueInfo = await getRoomQueueInfo(meeting.id)
-      return { ...meetingData, ...queueInfo }
-    }))
-
-    broadcastRoomUpdate(result)
+    const rooms = await getRoomsData()
+    broadcastRoomUpdate(rooms)
   } catch (error) {
     console.error('Broadcast rooms error:', error)
   }
