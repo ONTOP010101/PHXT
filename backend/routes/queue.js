@@ -152,7 +152,47 @@ router.post('/add', async (req, res) => {
       })
 
       if (existingQueue) {
-        return res.json({ code: 400, message: '该洽谈室已存在该厂商的排号记录' })
+        if (existingQueue.queueNumber) {
+          return res.json({ code: 400, message: '该洽谈室已存在该厂商的排号记录' })
+        }
+
+        const room = await db.MeetingRoom.findByPk(roomId)
+        const todayStart = new Date(new Date().toDateString())
+        const todayQueues = await db.Queue.findAll({
+          where: {
+            roomId,
+            status: { [db.Sequelize.Op.ne]: 'cancelled' },
+            createdAt: { [db.Sequelize.Op.gte]: todayStart }
+          }
+        })
+
+        const existingNumbers = todayQueues
+          .filter(q => q.queueNumber && !q.queueNumber.includes('-'))
+          .map(q => parseInt(q.queueNumber.split('_')[1]))
+
+        let nextNum = 1
+        if (existingNumbers.length > 0) {
+          nextNum = Math.max(...existingNumbers) + 1
+        }
+
+        let candidateNumber = `${roomId}_${String(nextNum).padStart(3, '0')}`
+        while (await db.Queue.findOne({ where: { queueNumber: candidateNumber } })) {
+          nextNum++
+          candidateNumber = `${roomId}_${String(nextNum).padStart(3, '0')}`
+        }
+
+        await existingQueue.update({
+          queueNumber: candidateNumber,
+          status: 'waiting'
+        })
+
+        await broadcastAllRooms()
+
+        return res.json({
+          code: 200,
+          message: '排号成功',
+          data: existingQueue
+        })
       }
     }
 
@@ -394,7 +434,7 @@ router.post('/requeue/:queueId', async (req, res) => {
       return res.json({ code: 400, message: '已完成的排号无法重排' })
     }
 
-    if (queue.status !== 'called') {
+    if (queue.status !== 'called' && queue.queueNumber) {
       return res.json({ code: 400, message: '该排号还未被叫号，无法重排' })
     }
 

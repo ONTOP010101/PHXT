@@ -208,47 +208,67 @@ const printTicket = async () => {
         c.companyName.trim() === companyName && c.phone.trim() === phone
       )
 
-      let companyId = null
+      let companyId = matchedCompany ? matchedCompany.id : null
 
-      if (matchedCompany) {
-        companyId = matchedCompany.id
-
-        const existingQueue = queueList.value.find(q =>
-          q.companyId === companyId &&
-          q.roomId === selectedRoom.id &&
-          !q.completed
-        )
-
-        if (existingQueue) {
-          if (existingQueue.queueNumber && existingQueue.status !== 'called' && existingQueue.status !== 'completed') {
-            showCustomMessage(`您已排号 ${existingQueue.queueNumber}，无需再次排号`)
-            return
-          }
-
-          if (existingQueue.status === 'called') {
-            const requeueRes = await requeue(existingQueue.id)
-
-            if (requeueRes.code === 200 && requeueRes.data) {
-              const newQueueNumber = requeueRes.data.queueNumber
-              const itemNumber = matchedCompany ? (matchedCompany.itemNumber || '') : ''
-              showCustomMessage(`过号重排成功！\n排号：${newQueueNumber}\n厂商：${companyName}`)
-              printQueueTicket(selectedRoom.name, newQueueNumber, companyName, false, itemNumber)
-            } else {
-              showCustomMessage(requeueRes.message || '过号重排失败')
-            }
-            await loadQueueList()
-            form.value = { room: '', phone: '', company: '' }
-            return
-          }
+      if (!matchedCompany) {
+        const companyRes = await addCompany({ companyName, phone })
+        if (companyRes.code === 200 && companyRes.data) {
+          companyId = companyRes.data.id
+        } else {
+          showCustomMessage('创建厂商信息失败')
+          return
         }
       }
 
-      const companyRes = await addCompany({ companyName, phone })
-      if (companyRes.code === 200 && companyRes.data) {
-        companyId = companyRes.data.id
-      } else {
-        showCustomMessage('创建厂商信息失败')
-        return
+      const existingQueue = queueList.value.find(q =>
+        q.companyId === companyId &&
+        q.roomId === selectedRoom.id &&
+        !q.completed &&
+        q.status !== 'cancelled'
+      )
+
+      if (existingQueue) {
+        if (existingQueue.queueNumber && existingQueue.status !== 'called' && existingQueue.status !== 'completed') {
+          const itemNumber = matchedCompany ? (matchedCompany.itemNumber || '') : ''
+          showCustomMessage(`您已排号 ${existingQueue.queueNumber}，无需再次排号`)
+          printQueueTicket(selectedRoom.name, existingQueue.queueNumber, companyName, false, itemNumber)
+          form.value = { room: '', phone: '', company: '' }
+          return
+        }
+
+        if (existingQueue.status === 'called') {
+          const requeueRes = await requeue(existingQueue.id)
+
+          if (requeueRes.code === 200 && requeueRes.data) {
+            const newQueueNumber = requeueRes.data.queueNumber
+            const itemNumber = matchedCompany ? (matchedCompany.itemNumber || '') : ''
+            showCustomMessage(`过号重排成功！\n排号：${newQueueNumber}\n厂商：${companyName}`)
+            printQueueTicket(selectedRoom.name, newQueueNumber, companyName, false, itemNumber)
+          } else {
+            showCustomMessage(requeueRes.message || '过号重排失败')
+          }
+          await loadQueueList()
+          form.value = { room: '', phone: '', company: '' }
+          return
+        }
+
+        if (!existingQueue.queueNumber) {
+          const queueRes = await addQueue({
+            companyId,
+            roomId: selectedRoom.id
+          })
+          if (queueRes.code === 200 && queueRes.data) {
+            const newQueueNumber = queueRes.data.queueNumber
+            const itemNumber = matchedCompany ? (matchedCompany.itemNumber || '') : ''
+            showCustomMessage(`排号成功！\n排号：${newQueueNumber}\n厂商：${companyName}`)
+            printQueueTicket(selectedRoom.name, newQueueNumber, companyName, false, itemNumber)
+          } else {
+            showCustomMessage(queueRes.message || '排号失败')
+          }
+          await loadQueueList()
+          form.value = { room: '', phone: '', company: '' }
+          return
+        }
       }
 
       const queueRes = await addQueue({

@@ -1051,7 +1051,8 @@ const handleRequeue = async () => {
     return
   }
 
-  if (!calledNumbers.value.has(item.id)) {
+  // 专点洽谈室没有 queueNumber，可以直接分配
+  if (item.queueNumber && !calledNumbers.value.has(item.id)) {
     showCustomMessage('该厂商还未被叫号，无法重排')
     return
   }
