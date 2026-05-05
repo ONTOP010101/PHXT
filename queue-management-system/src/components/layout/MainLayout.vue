@@ -21,7 +21,7 @@
                 @click.stop="closeTab(tab.path)"
                 v-if="tab.path !== '/'"
               >
-                <i data-lucide="x" class="w-4 h-4"></i>
+                <X class="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -38,6 +38,7 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { X } from 'lucide-vue-next'
 import Header from './Header.vue'
 import Sidebar from './Sidebar.vue'
 import HomePage from '../../pages/Home.vue'

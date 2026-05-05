@@ -37,7 +37,9 @@
           <div v-if="room.visitRequirement && room.visitRequirement.trim()" class="text-xs text-surface-500 mt-0.5 sm:mt-1" style="font-size: 20px; line-height: 80px; text-align: center; display: flex; flex-direction: column;"><span style="color: rgb(255, 106, 56); font-size: 30px; text-align: left; font-weight: 700;">见客要求：</span><span style="background-color: #ffffff; padding: 10px; border-radius: 5px; color: #050505; font-weight: 700; opacity: 0.8;">{{ room.visitRequirement }}</span></div>
         </div>
         <div v-if="activeRooms.length === 0" class="w-full text-center py-8">
-          <p class="text-surface-400">暂无启用的洽谈室</p>
+          <div class="marquee-container">
+            <div class="marquee-text">欢迎光临新悦翔玩具展馆</div>
+          </div>
         </div>
       </div>
       <!-- 选中模式 -->
@@ -99,7 +101,7 @@
     </div>
     
     <!-- 引导语区域 -->
-    <div v-if="route.path === '/queue/self/vertical'" class="mx-4 mb-8">
+    <div v-if="route.path === '/queue/self/vertical'" class="fixed bottom-0 left-0 right-0 mx-4 mb-4 z-50">
       <div class="card p-6 sm:p-8 rounded-xl shadow-md bg-white">
         <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
           <div class="flex items-center">
@@ -114,15 +116,15 @@
             </div>
           </div>
           <div class="w-32 sm:w-40 h-32 sm:h-40 bg-gray-100 rounded-lg flex items-center justify-center">
-            <!-- 小程序二维码示例图 -->
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://example.com&margin=2" alt="小程序二维码" class="w-28 h-28 object-contain" />
+            <!-- 小程序二维码：扫码直接进入排号页面 -->
+            <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(miniappScanUrl)}&margin=2`" alt="小程序二维码" class="w-28 h-28 object-contain" />
           </div>
         </div>
       </div>
     </div>
     
     <!-- 底部信息 -->
-    <div class="mt-[-20px] sm:mt-0 text-center text-xs text-surface-400 pb-4 sm:pb-6 px-4">
+    <div class="fixed bottom-0 left-0 right-0 text-center text-xs text-surface-400 pb-4 sm:pb-6 px-4 z-40">
       © 2026 公开见客排号系统 | 版本 1.0.0
     </div>
     </div>
@@ -132,6 +134,10 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { getMeetingList } from '@/api/meeting'
+
+const MINIAPP_ORIGIN = 'https://xinyuexiang.com'
+const MINIAPP_APPID = 'wxd1234567890abcdef'
 
 const form = ref({
   room: ''
@@ -156,13 +162,8 @@ const closeMessage = () => {
   showMessage.value = false
 }
 
-// 确保全局内存存储存在
-if (!window.__meetingRoomsStore) {
-  window.__meetingRoomsStore = []
-}
-
 // 响应式数据
-const meetingRooms = ref(window.__meetingRoomsStore)
+const meetingRooms = ref([])
 
 // 获取已启用的洽谈室
 const activeRooms = computed(() => {
@@ -172,11 +173,23 @@ const activeRooms = computed(() => {
   return active
 })
 
+// 从后端加载洽谈室列表
+const loadMeetings = async () => {
+  try {
+    const response = await getMeetingList()
+    if (response.code === 200) {
+      meetingRooms.value = response.data.list || []
+    }
+  } catch (error) {
+    console.error('加载洽谈室列表失败:', error)
+    showCustomMessage('加载洽谈室列表失败')
+  }
+}
 
-// 在组件挂载时检查路由
+// 在组件挂载时检查路由并加载数据
 onMounted(() => {
-  // 如果是直接访问 /queue/self/vertical 页面，重置状态
   resetStateByRoute()
+  loadMeetings()
 })
 
 // 监听路由变化
@@ -186,15 +199,11 @@ watch(() => route.path, () => {
 })
 
 // 手动刷新洽谈室列表
-const refreshRooms = () => {
+const refreshRooms = async () => {
   console.log('手动刷新洽谈室列表')
   try {
-    if (window.__meetingRoomsStore) {
-      // 使用 splice 方法更新数据，确保 Vue 能够正确检测到变化
-      meetingRooms.value.splice(0, meetingRooms.value.length, ...window.__meetingRoomsStore)
-      console.log('刷新后的数据:', meetingRooms.value)
-      showCustomMessage('洽谈室列表已刷新')
-    }
+    await loadMeetings()
+    showCustomMessage('洽谈室列表已刷新')
   } catch (e) {
     console.error('Error refreshing meetingRooms:', e)
     showCustomMessage('刷新失败，请重试')
@@ -202,19 +211,11 @@ const refreshRooms = () => {
 }
 
 // 定时刷新洽谈室数据
+let refreshInterval = null
 onMounted(() => {
-  setInterval(() => {
-    // 从全局内存存储中读取数据
+  refreshInterval = setInterval(() => {
     console.log('自动刷新洽谈室数据')
-    try {
-      if (window.__meetingRoomsStore) {
-        // 使用 splice 方法更新数据，确保 Vue 能够正确检测到变化
-        meetingRooms.value.splice(0, meetingRooms.value.length, ...window.__meetingRoomsStore)
-        console.log('刷新后的数据:', meetingRooms.value)
-      }
-    } catch (e) {
-      console.error('Error refreshing meetingRooms:', e)
-    }
+    loadMeetings()
   }, 2000) // 2秒刷新一次
 })
 
@@ -241,6 +242,12 @@ const closeKeyboards = () => {
   showNumKeyboard.value = false
   showHwKeyboard.value = false
 }
+
+// 小程序扫码链接：包含排号场景标识，扫码后小程序自动获取用户信息并匹配排号
+const miniappScanUrl = computed(() => {
+  const today = new Date().toISOString().split('T')[0]
+  return `${MINIAPP_ORIGIN}/miniapp/queue?scene=scan_bind&date=${today}&autoQueue=true`
+})
 
 const queueList = ref([
   { id: 1, number: 'A-018', customerName: '张三', phone: '13800138001', company: '腾讯科技', waitingTime: '5分钟', status: 'processing' },
@@ -452,5 +459,35 @@ const generateTicketNumber = () => {
 
 .message-close:hover {
   background-color: #2563eb;
+}
+
+/* 滚动字幕样式 */
+.marquee-container {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  background: linear-gradient(90deg, #fef3c7, #fde68a, #fef3c7);
+  border-radius: 12px;
+  padding: 16px 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.marquee-text {
+  display: inline-block;
+  font-size: 36px;
+  font-weight: 700;
+  color: #d71d1d;
+  animation: marquee-scroll 8s linear infinite;
+  padding-left: 100%;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes marquee-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-200%);
+  }
 }
 </style>
