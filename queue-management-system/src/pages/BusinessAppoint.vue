@@ -453,13 +453,19 @@ const addCompany = async () => {
     return
   }
 
+  const phoneRegex = /^\d{11}$/
+  if (!phoneRegex.test(newCompany.value.phone)) {
+    showCustomMessage('手机号必须是11位数字')
+    return
+  }
+
   if (!selectedRoom.value || !selectedRoomObj.value) {
     showCustomMessage('请先选择洽谈室')
     return
   }
 
   // 检查同一洽谈室中是否已有同名同手机的厂商
-  const exists = tableData.value.some(item => 
+  const exists = tableData.value.some(item =>
     item.roomId === selectedRoomObj.value.id &&
     item.companyName === newCompany.value.companyName &&
     item.phone === newCompany.value.phone
@@ -1051,8 +1057,12 @@ const handleRequeue = async () => {
     return
   }
 
-  // 专点洽谈室没有 queueNumber，可以直接分配
-  if (item.queueNumber && !calledNumbers.value.has(item.id)) {
+  if (!item.queueNumber) {
+    showCustomMessage('该厂商还未排号，无法重排')
+    return
+  }
+
+  if (!calledNumbers.value.has(item.id)) {
     showCustomMessage('该厂商还未被叫号，无法重排')
     return
   }

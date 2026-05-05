@@ -104,8 +104,8 @@ const generateRequeueNumber = async (queue, transaction) => {
     if (baseNumber > maxBaseNum) {
       baseNumber = maxBaseNum
     }
-    // 从baseNumber开始往后找，找到第一个有空余后缀的位置
-    while (baseNumber <= maxBaseNum + 1) {
+    // 从baseNumber开始往后找，只在已存在的基础号后面找空余后缀
+    while (baseNumber <= maxBaseNum) {
       for (let suffix = 1; suffix <= 3; suffix++) {
         const candidate = `${queue.roomId}_${String(baseNumber).padStart(3, '0')}-${suffix}`
         if (!allQueueNumbers.has(candidate)) {
@@ -114,8 +114,13 @@ const generateRequeueNumber = async (queue, transaction) => {
       }
       baseNumber++
     }
-    // 如果所有后缀都被占用了，fallback到生成新主号
-    return generateNextQueueNumber(queue.roomId, transaction)
+    // 如果所有已有基础号的后缀都被占用了，生成新的主号
+    let newQueueNumber = `${queue.roomId}_${String(maxBaseNum + 1).padStart(3, '0')}`
+    while (allQueueNumbers.has(newQueueNumber)) {
+      const num = parseInt(newQueueNumber.split('_')[1]) + 1
+      newQueueNumber = `${queue.roomId}_${String(num).padStart(3, '0')}`
+    }
+    return newQueueNumber
   } else {
     // 当前叫号后不足3个，直接生成新的主号排在队尾
     let newQueueNumber = `${queue.roomId}_${String(maxBaseNum + 1).padStart(3, '0')}`
