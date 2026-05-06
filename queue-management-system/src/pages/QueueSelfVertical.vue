@@ -1,123 +1,122 @@
 <template>
-  <div class="flex items-start min-h-screen bg-gradient-to-b from-primary-50 to-white overflow-x-auto">
+  <div class="flex items-start min-h-screen bg-gradient-to-b from-primary-50 to-white" :style="isLocked ? 'overflow-x: hidden; touch-action: pan-y;' : 'overflow-x: auto;'">
     <div v-if="showMessage" class="custom-message" @click="closeMessage">
       <div class="message-content">{{ message }}</div>
       <button class="message-close" @click.stop="closeMessage">确定</button>
     </div>
-    <div id="page-queue-self-vertical" class="slide-in h-screen flex flex-col pt-[100px]" style="width: 100vw; max-width: 100vw;">
-    <!-- 返回按钮 -->
-    <button v-if="hasSelectedRoom" class="ml-4 mt-4 mb-2 text-white font-bold transition-colors px-8 py-6 bg-primary-600 rounded-lg shadow-md w-32" style="height: 70px;" onclick="window.location.href='#/queue/self/vertical'">
-      <span>返回</span>
-    </button>
+    <div id="page-queue-self-vertical" class="slide-in h-screen flex flex-col pt-8" :style="isLocked ? 'width: 100vw; max-width: 100vw; overflow-x: hidden; touch-action: pan-y;' : 'width: 100vw; max-width: 100vw;'">
     <!-- 顶部标题区域 -->
-    <div class="mb-6 sm:mb-8 pt-4 sm:pt-6">
+    <div class="mb-6 sm:mb-8 pt-2 sm:pt-4 relative">
+      <!-- 刷新按钮 -->
+      <button class="absolute left-4 top-4 px-3 py-1.5 bg-primary-500 text-white text-sm rounded-lg hover:bg-primary-600 transition-colors" @click="refreshRooms">
+        刷新
+      </button>
+      <!-- 锁定按钮 -->
+      <button class="absolute right-4 top-4 z-20 w-10 h-10 bg-white rounded-lg shadow-md flex items-center justify-center hover:bg-gray-50 transition-colors" @click="toggleLock">
+        <svg v-if="!isLocked" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-primary-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+      </button>
       <div class="text-center">
         <div class="w-16 sm:w-24 h-16 sm:h-24 flex items-center justify-center mx-auto mb-3 sm:mb-4">
           <img src="/LOGO.png" alt="新悦翔" class="w-full h-full object-contain" />
         </div>
         <h2 class="text-xl sm:text-2xl font-bold" style="color: #d71d1d;">公开见客排号系统</h2>
-        <p class="text-xs sm:text-sm text-surface-400 mt-1 sm:mt-2">请填写以下信息完成排号登记</p>
-        <button class="mt-4 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors" @click="refreshRooms">
-          刷新洽谈室列表
-        </button>
+        <p class="text-xs sm:text-sm text-surface-400 mt-1 sm:mt-2">扫描二维码完成排号登记</p>
       </div>
     </div>
     
     <!-- 洽谈室选择区域 -->
-    <div class="mb-8">
-
-      <!-- 选择模式 -->
-      <div v-if="!hasSelectedRoom" class="flex flex-wrap justify-between gap-2 px-2 w-full">
-        <div v-for="(room, index) in activeRooms" :key="room.id" class="card p-3 sm:p-4 rounded-xl cursor-pointer transition-all duration-300 hover:shadow-md transform hover:-translate-y-1 w-[49%]" :class="{ 'border-2 border-primary-600 bg-primary-50': form.room === room.name }" :style="{ backgroundColor: index === 0 ? '#FFE4E1' : index === 1 ? '#E0FFFF' : '#F0F8FF' }" @click="selectRoom(room.name)">
-          <h4 class="font-semibold text-surface-800 text-sm sm:text-base mb-1" style="font-size: 30px; text-align: center;">{{ room.name }}</h4>
-          <div class="flex items-center justify-between">
-            <i data-lucide="check" v-if="form.room === room.name" class="w-3 sm:w-4 h-3 sm:h-4 text-primary-600"></i>
+    <div class="mb-8 overflow-y-auto" style="max-height: calc(100vh - 450px);">
+      <div class="flex flex-wrap justify-center gap-6 px-4 w-full py-4">
+        <div
+          v-for="(room, index) in activeRooms"
+          :key="room.id"
+          class="room-card bg-white rounded-2xl border-2 border-gray-100 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 relative"
+        >
+          <!-- 右上角二维码 -->
+          <div class="absolute top-4 right-4 z-20">
+            <div class="bg-white rounded-xl p-2 shadow-lg border border-gray-100">
+              <div v-if="!isQRCodeExpired(room.id)" class="relative">
+                <img :src="getRoomQRCode(room.id)" :alt="room.name + '排号二维码'" class="w-20 h-20 sm:w-24 sm:h-24 object-contain" />
+                <div class="text-xs text-center text-gray-500 mt-1 font-medium">扫码排号</div>
+              </div>
+              <div v-else class="flex flex-col items-center justify-center w-20 h-20 sm:w-24 sm:h-24">
+                <div class="text-gray-400 text-center text-xs mb-1">已失效</div>
+                <div class="text-gray-400 text-center text-xs mb-2">刷新二维码排号</div>
+                <button 
+                  @click.stop="refreshQRCode(room.id)" 
+                  class="px-3 py-1.5 bg-primary-500 text-white text-xs rounded-lg hover:bg-primary-600 transition-colors"
+                >
+                  刷新
+                </button>
+              </div>
+            </div>
           </div>
-          <div v-if="room.companyName" class="text-xs text-surface-500 mt-1 sm:mt-2" style="font-size: 30px; text-align: center; display: flex; flex-direction: column; line-height: 50px;"><span style="color: #ff6a38; text-align: left; font-weight: 700;">公司名称: </span><span style="background-color: #ffffff; padding: 10px; border-radius: 5px; color: #0d0d0d;">{{ room.companyName }}</span></div>
-          <div v-if="room.visitRequirement && room.visitRequirement.trim()" class="text-xs text-surface-500 mt-0.5 sm:mt-1" style="font-size: 20px; line-height: 80px; text-align: center; display: flex; flex-direction: column;"><span style="color: rgb(255, 106, 56); font-size: 30px; text-align: left; font-weight: 700;">见客要求：</span><span style="background-color: #ffffff; padding: 10px; border-radius: 5px; color: #050505; font-weight: 700; opacity: 0.8;">{{ room.visitRequirement }}</span></div>
+
+          <div class="p-6 sm:p-7">
+            <!-- 洽谈室标题 -->
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-11 h-11 rounded-xl bg-gray-50 flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5.5 h-5.5 text-gray-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </div>
+              <h4 class="text-xl sm:text-2xl font-bold text-gray-800">{{ room.name }}</h4>
+            </div>
+
+            <!-- 状态标签 -->
+            <div class="mb-4">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-medium">
+                <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                可排号
+              </span>
+            </div>
+
+            <!-- 公司名称 -->
+            <div v-if="room.companyName" class="mb-4">
+              <div class="text-xs text-gray-500 mb-1.5 font-medium">公司名称</div>
+              <p class="text-base font-semibold text-gray-800">{{ room.companyName }}</p>
+            </div>
+
+            <!-- 见客要求 -->
+            <div v-if="room.visitRequirement && room.visitRequirement.trim()">
+              <div class="text-xs text-gray-500 mb-1.5 font-medium">见客要求</div>
+              <p class="text-sm text-gray-600 leading-relaxed">{{ room.visitRequirement }}</p>
+            </div>
+          </div>
         </div>
+
         <div v-if="activeRooms.length === 0" class="w-full text-center py-8">
           <div class="marquee-container">
             <div class="marquee-text">欢迎光临新悦翔玩具展馆</div>
           </div>
         </div>
       </div>
-      <!-- 选中模式 -->
-      <div v-else class="px-4">
-        <div v-if="selectedRoom" class="card selected-room p-4 sm:p-6 rounded-xl transition-all duration-300 shadow-lg w-full mx-5 max-w-[calc(100%-60px)] min-h-[200px] sm:min-h-[400px]">
-          <div class="flex items-center justify-between mb-4">
-            <h4 class="font-semibold text-surface-800 text-lg sm:text-xl">{{ selectedRoom.name }}</h4>
-            <button class="text-primary-600 hover:text-primary-800" @click="resetSelectedRoom">
-              <i data-lucide="x" class="w-4 sm:w-5 h-4 sm:h-5"></i>
-            </button>
-          </div>
-          <div class="flex items-center mb-4">
-            <span class="badge badge-orange px-2 sm:px-3 py-1 text-sm">启用中</span>
-          </div>
-          <div v-if="selectedRoom.companyName" class="text-xl sm:text-2xl text-surface-600 mb-2" style="line-height: 80px; font-size: 50px; color: #080808; font-weight: 800;">
-            <span class="text-red-600 font-bold text-2xl sm:text-3xl" style="line-height: 80px; font-size: 50px;">公司名称：</span>{{ selectedRoom.companyName }}
-          </div>
-          <div v-if="selectedRoom.visitRequirement && selectedRoom.visitRequirement.trim()" class="text-xl sm:text-2xl" style="line-height: 100px; font-size: 50px; color: #080808; font-weight: 800;">
-            <span class="text-red-600 font-bold text-2xl sm:text-3xl" style="line-height: 100px; font-size: 50px;">见客要求：</span>{{ selectedRoom.visitRequirement }}
-          </div>
-        </div>
-      </div>
-    </div>
-    
-
-    
-    <!-- 排号信息区域 -->
-    <div v-if="route.path === '/queue/self/vertical/new'" class="card mx-4 p-4 sm:p-6 rounded-xl shadow-md flex-1">
-      <div class="flex items-center mb-4 sm:mb-6">
-        <div class="w-6 sm:w-8 h-6 sm:h-8 bg-primary-100 rounded-lg flex items-center justify-center mr-2 sm:mr-3">
-          <i data-lucide="edit-3" class="w-3 sm:w-4 h-3 sm:h-4 text-primary-600"></i>
-        </div>
-        <h3 class="font-semibold text-surface-800 text-lg sm:text-xl">排号信息</h3>
-      </div>
-      <div class="space-y-4 sm:space-y-5" @click="closeKeyboards">
-        <!-- 选择洽谈室 -->
-        <div class="space-y-2">
-          <label class="form-label text-surface-600 font-medium text-sm sm:text-base">选择洽谈室</label>
-          <select id="self-room" class="form-input form-select rounded-lg border-gray-200 focus:border-primary-400 focus:ring-2 focus:ring-primary-100" v-model="form.room" :disabled="hasSelectedRoom">
-            <option value="">请选择洽谈室</option>
-            <option v-for="room in activeRooms" :key="room.id" :value="room.name">{{ room.name }}</option>
-          </select>
-        </div>
-        
-        <!-- 生成二维码按钮 -->
-        <button id="print-ticket-btn" class="btn btn-primary w-full justify-center py-3 sm:py-4 text-base sm:text-lg mt-6 sm:mt-8 mb-10 sm:mb-12 rounded-xl shadow-md hover:shadow-lg transition-all transform hover:-translate-y-1" @click.stop="generateQRCode">
-          <i data-lucide="qrcode" class="w-4 sm:w-5 h-4 sm:h-5 mr-1 sm:mr-2"></i> 生成排号二维码
-        </button>
-        
-        <!-- 二维码显示区域 -->
-        <div v-if="qrcodeUrl" class="pt-10 sm:pt-12 text-center">
-          <h4 class="font-semibold text-surface-800 text-lg sm:text-xl mb-4">排号二维码</h4>
-          <div class="flex justify-center">
-            <img :src="qrcodeUrl" alt="排号二维码" class="w-48 sm:w-64 h-48 sm:h-64 rounded-lg shadow-lg object-contain" />
-          </div>
-          <p class="mt-4 text-sm sm:text-base text-surface-600">请扫描二维码查看排号信息</p>
-        </div>
-      </div>
     </div>
     
     <!-- 引导语区域 -->
-    <div v-if="route.path === '/queue/self/vertical'" class="fixed bottom-0 left-0 right-0 mx-4 mb-4 z-50">
-      <div class="card p-6 sm:p-8 rounded-xl shadow-md bg-white">
-        <div class="flex flex-col sm:flex-row items-center justify-center gap-6">
+    <div class="fixed bottom-0 left-0 right-0 mx-4 mb-4 z-50">
+      <div class="card p-4 sm:p-6 rounded-xl shadow-md bg-white">
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
           <div class="flex items-center">
             <div class="text-center">
-              <h3 class="text-lg sm:text-xl font-semibold text-surface-800 mb-4" style="font-size: 40px;">温馨提示</h3>
-              <p class="text-base sm:text-lg text-surface-600 font-semibold mb-4" style="color: #f91a01; font-size: 40px;">首次排号请先扫描二维码</p>
-              <p class="text-base sm:text-lg text-surface-600 font-semibold" style="color: #f91a01; font-size: 40px;">关注小程序</p>
+              <h3 class="text-lg sm:text-xl font-semibold text-surface-800 mb-2" style="font-size: 32px;">温馨提示</h3>
+              <p class="text-base sm:text-lg text-surface-600 font-semibold mb-2" style="color: #f91a01; font-size: 32px;">首次排号请先扫描二维码</p>
+              <p class="text-base sm:text-lg text-surface-600 font-semibold" style="color: #f91a01; font-size: 32px;">关注小程序</p>
             </div>
             <!-- 动态指向二维码的箭头 -->
             <div class="ml-4 animate-bounce">
-              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
             </div>
           </div>
-          <div class="w-32 sm:w-40 h-32 sm:h-40 bg-gray-100 rounded-lg flex items-center justify-center">
+          <div class="w-28 sm:w-32 h-28 sm:h-32 bg-gray-100 rounded-lg flex items-center justify-center">
             <!-- 小程序二维码：扫码直接进入排号页面 -->
-            <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(miniappScanUrl)}&margin=2`" alt="小程序二维码" class="w-28 h-28 object-contain" />
+            <img :src="`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(miniappScanUrl)}&margin=2`" alt="小程序二维码" class="w-24 h-24 object-contain" />
           </div>
         </div>
       </div>
@@ -132,26 +131,48 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { getMeetingList } from '@/api/meeting'
 
 const MINIAPP_ORIGIN = 'https://xinyuexiang.com'
 const MINIAPP_APPID = 'wxd1234567890abcdef'
 
-const form = ref({
-  room: ''
-})
-
-const showNumKeyboard = ref(false)
-const showHwKeyboard = ref(false)
-const selectedRoomId = ref(null)
-const qrcodeUrl = ref('')
-const router = useRouter()
-const route = useRoute()
-
 const showMessage = ref(false)
 const message = ref('')
+const isLocked = ref(false)
+
+const preventHorizontalScroll = (e) => {
+  if (isLocked.value) {
+    e.preventDefault()
+  }
+}
+
+const preventTouchMove = (e) => {
+  if (isLocked.value) {
+    const touch = e.touches[0]
+    const startX = touch.clientX
+    const startY = touch.clientY
+    
+    const handleMove = (moveEvent) => {
+      const moveX = moveEvent.touches[0].clientX
+      const moveY = moveEvent.touches[0].clientY
+      const diffX = Math.abs(moveX - startX)
+      const diffY = Math.abs(moveY - startY)
+      
+      if (diffX > diffY && diffX > 10) {
+        moveEvent.preventDefault()
+      }
+    }
+    
+    const handleEnd = () => {
+      document.removeEventListener('touchmove', handleMove)
+      document.removeEventListener('touchend', handleEnd)
+    }
+    
+    document.addEventListener('touchmove', handleMove, { passive: false })
+    document.addEventListener('touchend', handleEnd)
+  }
+}
 
 const showCustomMessage = (msg) => {
   message.value = msg
@@ -162,16 +183,85 @@ const closeMessage = () => {
   showMessage.value = false
 }
 
+const toggleLock = () => {
+  isLocked.value = !isLocked.value
+}
+
+watch(isLocked, (newVal) => {
+  if (newVal) {
+    document.addEventListener('wheel', preventHorizontalScroll, { passive: false })
+    document.addEventListener('touchstart', preventTouchMove, { passive: true })
+  } else {
+    document.removeEventListener('wheel', preventHorizontalScroll)
+    document.removeEventListener('touchstart', preventTouchMove)
+  }
+})
+
 // 响应式数据
 const meetingRooms = ref([])
+// 二维码状态管理 { roomId: { timestamp: number, timer: number } }
+const qrcodeStates = ref({})
+// 响应式时间变量，用于触发自动更新
+const currentTime = ref(Date.now())
 
 // 获取已启用的洽谈室
 const activeRooms = computed(() => {
   console.log('All rooms:', meetingRooms.value)
   const active = meetingRooms.value.filter(room => room.status === 'occupied')
   console.log('Active rooms:', active)
+  // 初始化每个房间的二维码状态
+  active.forEach(room => {
+    if (!qrcodeStates.value[room.id]) {
+      initQRCodeState(room.id)
+    }
+  })
   return active
 })
+
+// 初始化二维码状态
+const initQRCodeState = (roomId) => {
+  qrcodeStates.value[roomId] = {
+    timestamp: Date.now(),
+    timer: null
+  }
+  // 设置2秒后失效
+  qrcodeStates.value[roomId].timer = setTimeout(() => {
+    // 失效不需要额外操作，isQRCodeExpired 会自动判断
+  }, 2000)
+}
+
+// 检查二维码是否失效
+const isQRCodeExpired = (roomId) => {
+  const state = qrcodeStates.value[roomId]
+  if (!state) return true
+  // 引用 currentTime 来触发响应式更新
+  const _ = currentTime.value
+  return Date.now() - state.timestamp > 2000
+}
+
+// 刷新二维码
+const refreshQRCode = (roomId) => {
+  // 清除旧定时器
+  if (qrcodeStates.value[roomId]?.timer) {
+    clearTimeout(qrcodeStates.value[roomId].timer)
+  }
+  // 重新初始化
+  initQRCodeState(roomId)
+}
+
+// 生成洽谈室排号二维码
+const getRoomQRCode = (roomId) => {
+  const room = activeRooms.value.find(r => r.id === roomId)
+  if (!room) return ''
+  const roomData = {
+    roomId: room.id,
+    roomName: room.name,
+    type: 'room_queue',
+    timestamp: qrcodeStates.value[roomId]?.timestamp || Date.now()
+  }
+  const encodedData = encodeURIComponent(JSON.stringify(roomData))
+  return `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedData}&margin=2`
+}
 
 // 从后端加载洽谈室列表
 const loadMeetings = async () => {
@@ -186,16 +276,14 @@ const loadMeetings = async () => {
   }
 }
 
-// 在组件挂载时检查路由并加载数据
+// 在组件挂载时加载数据
 onMounted(() => {
-  resetStateByRoute()
   loadMeetings()
-})
-
-// 监听路由变化
-watch(() => route.path, () => {
-  // 当路由路径变化时，根据路径重置状态
-  resetStateByRoute()
+  // 如果初始是锁定状态，添加事件监听
+  if (isLocked.value) {
+    document.addEventListener('wheel', preventHorizontalScroll, { passive: false })
+    document.addEventListener('touchstart', preventTouchMove, { passive: true })
+  }
 })
 
 // 手动刷新洽谈室列表
@@ -212,200 +300,59 @@ const refreshRooms = async () => {
 
 // 定时刷新洽谈室数据
 let refreshInterval = null
+// 定时更新时间，让二维码失效状态自动显示
+let timeUpdateInterval = null
+
 onMounted(() => {
   refreshInterval = setInterval(() => {
     console.log('自动刷新洽谈室数据')
     loadMeetings()
   }, 2000) // 2秒刷新一次
+  
+  // 每500ms更新一次时间，触发响应式更新
+  timeUpdateInterval = setInterval(() => {
+    currentTime.value = Date.now()
+  }, 500)
 })
 
-// 根据路由路径重置状态
-const resetStateByRoute = () => {
-  // 如果是直接访问 /queue/self/vertical 页面，重置状态
-  if (route.path === '/queue/self/vertical') {
-    selectedRoomId.value = null
-    form.value.room = ''
-    qrcodeUrl.value = ''
+onUnmounted(() => {
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
   }
-}
-
-const hasSelectedRoom = computed(() => {
-  return selectedRoomId.value !== null
+  if (timeUpdateInterval) {
+    clearInterval(timeUpdateInterval)
+  }
+  // 清除所有二维码定时器
+  Object.values(qrcodeStates.value).forEach(state => {
+    if (state.timer) {
+      clearTimeout(state.timer)
+    }
+  })
+  // 清除滚动事件监听
+  document.removeEventListener('wheel', preventHorizontalScroll)
+  document.removeEventListener('touchstart', preventTouchMove)
 })
-
-const selectedRoom = computed(() => {
-  return activeRooms.value.find(room => room.id === selectedRoomId.value)
-})
-
-// 关闭所有键盘
-const closeKeyboards = () => {
-  showNumKeyboard.value = false
-  showHwKeyboard.value = false
-}
 
 // 小程序扫码链接：包含排号场景标识，扫码后小程序自动获取用户信息并匹配排号
 const miniappScanUrl = computed(() => {
   const today = new Date().toISOString().split('T')[0]
   return `${MINIAPP_ORIGIN}/miniapp/queue?scene=scan_bind&date=${today}&autoQueue=true`
 })
-
-const queueList = ref([
-  { id: 1, number: 'A-018', customerName: '张三', phone: '13800138001', company: '腾讯科技', waitingTime: '5分钟', status: 'processing' },
-  { id: 2, number: 'A-019', customerName: '李四', phone: '13900139002', company: '阿里巴巴', waitingTime: '10分钟', status: 'waiting' },
-  { id: 3, number: 'A-020', customerName: '王五', phone: '13700137003', company: '百度在线', waitingTime: '15分钟', status: 'waiting' },
-  { id: 4, number: 'A-021', customerName: '赵六', phone: '13600136004', company: '字节跳动', waitingTime: '20分钟', status: 'waiting' }
-])
-
-
-
-const addNumber = (num) => {
-  if (form.value.phone.length < 11) {
-    form.value.phone += num
-  }
-}
-
-const deleteNumber = () => {
-  form.value.phone = form.value.phone.slice(0, -1)
-}
-
-const addChar = (char) => {
-  form.value.company += char
-}
-
-const deleteChar = () => {
-  form.value.company = form.value.company.slice(0, -1)
-}
-
-const selectRoom = (roomName) => {
-  form.value.room = roomName
-  const selectedRoom = activeRooms.value.find(room => room.name === roomName)
-  if (selectedRoom) {
-    selectedRoomId.value = selectedRoom.id
-    // 跳转到新页面
-    router.push('/queue/self/vertical/new')
-  }
-}
-
-const resetSelectedRoom = () => {
-  selectedRoomId.value = null
-}
-
-const generateQRCode = () => {
-  if (!form.value.room) {
-    alert('请选择洽谈室')
-    return
-  }
-  
-  const ticketNumber = generateTicketNumber()
-  const ticket = {
-    number: ticketNumber,
-    room: form.value.room,
-    createTime: new Date().toLocaleString()
-  }
-  
-  // 使用 QRServer API 生成二维码
-  const qrData = JSON.stringify(ticket)
-  const encodedData = encodeURIComponent(qrData)
-  qrcodeUrl.value = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedData}&margin=2`
-  
-  console.log('生成排号二维码:', ticket)
-  console.log('二维码URL:', qrcodeUrl.value)
-}
-
-const goBack = () => {
-  // 返回到上一页
-  console.log('点击返回按钮')
-  // 尝试使用 window.location.replace 跳转到首页
-  window.location.replace('/') 
-}
-
-
-
-const printTicket = () => {
-  if (!form.value.room) {
-    alert('请选择洽谈室')
-    return
-  }
-  
-  const ticketNumber = generateTicketNumber()
-  const ticket = {
-    number: ticketNumber,
-    room: form.value.room,
-    createTime: new Date().toLocaleString()
-  }
-  
-  console.log('打印排号票:', ticket)
-  alert(`排号成功！\n排号号码: ${ticketNumber}\n洽谈室: ${form.value.room}`)
-  
-  // 重置表单
-  form.value = {
-    room: ''
-  }
-  showNumKeyboard.value = false
-  showHwKeyboard.value = false
-}
-
-const generateTicketNumber = () => {
-  const prefix = 'A'
-  const randomNum = Math.floor(Math.random() * 1000).toString().padStart(3, '0')
-  return `${prefix}-${randomNum}`
-}
 </script>
 
 <style scoped>
-/* 键盘样式 */
-#num-keyboard, #hw-keyboard {
-  border: 1px solid #e2e8f0;
-  border-radius: 0.5rem;
+/* 洽谈室卡片样式 */
+.room-card {
+  width: calc(50% - 12px);
+  min-width: 320px;
+  max-width: 520px;
 }
 
-.keyboard-key {
-  border: 1px solid #e2e8f0;
-  border-radius: 0.375rem;
-  background-color: #f8fafc;
-  transition: all 0.2s;
-}
-
-.keyboard-key:hover {
-  background-color: #eff6ff;
-  border-color: #bfdbfe;
-}
-
-/* 响应式设计 */
-@media (max-width: 640px) {
-  .card {
-    padding: 0.75rem;
+@media (max-width: 768px) {
+  .room-card {
+    width: 100%;
+    max-width: 100%;
   }
-  
-  h2 {
-    font-size: 1.5rem;
-  }
-  
-  h3 {
-    font-size: 1.25rem;
-  }
-  
-  .badge {
-    font-size: 0.75rem;
-    padding: 0.125rem 0.5rem;
-  }
-  
-  .text-sm {
-    font-size: 0.875rem;
-  }
-  
-  .text-xs {
-    font-size: 0.75rem;
-  }
-}
-/* 选中状态的洽谈室卡片样式 */
-.selected-room {
-  border: 2px solid #3b82f6 !important;
-  background: #dbeafe !important;
-  box-shadow: 0 12px 32px rgba(59, 130, 246, 0.3) !important;
-  transform: scale(1.05) !important;
-  transition: all 0.3s ease !important;
-  z-index: 10 !important;
 }
 
 .custom-message {

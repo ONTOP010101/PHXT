@@ -257,7 +257,15 @@ router.get('/users', async (req, res) => {
   try {
     const { page = 1, pageSize = 10, keyword = '' } = req.query
 
-    const where = { status: 1 }
+    const where = {
+      status: 1,
+      wxid: {
+        [db.Sequelize.Op.and]: [
+          { [db.Sequelize.Op.ne]: '' },
+          { [db.Sequelize.Op.ne]: null }
+        ]
+      }
+    }
     if (keyword) {
       where[db.Sequelize.Op.or] = [
         { companyName: { [db.Sequelize.Op.like]: `%${keyword}%` } },
