@@ -36,6 +36,7 @@
         <input type="text" v-model="searchKeyword" placeholder="搜索厂商名称..." class="form-input" style="width: 150px; flex-shrink: 0;" />
         <button class="btn btn-primary text-sm" style="white-space: nowrap;" @click="showAddModal = true">添加厂商</button>
         <button class="btn btn-primary text-sm" style="white-space: nowrap; background-color: #8b5cf6; border-color: #8b5cf6;" @click="showBatchImportModal = true">批量导入厂商</button>
+        <button class="btn btn-outline text-sm" style="white-space: nowrap; border-color: #06b6d4; color: #0891b2;" @click="handleSetNewQueueNumber">设置新排号</button>
         <button class="btn btn-outline text-sm" style="white-space: nowrap; border-color: #f97316; color: #ea580c;" @click="handleRequeue">重排</button>
         <button class="btn btn-danger text-sm" style="white-space: nowrap;" @click="handleDelete">删除</button>
         <button class="btn btn-outline text-sm" style="white-space: nowrap; border-color: #3b82f6; color: #2563eb;" @click="checkQueuedNotCompleted">勾选已排号未完成</button>
@@ -336,6 +337,135 @@ const closePasswordModal = () => {
   passwordAction.value = ''
 }
 
+const previewQueueTicket = (roomName, queueNumber, companyName, itemNumber = '') => {
+  try {
+    const roomNumber = parseInt(roomName.replace(/\D/g, ''))
+    const floor = roomNumber >= 1 && roomNumber <= 23 ? '3楼' : '2楼'
+    const displayRoomName = `${floor}${roomNumber}号室`
+    const numberPart = queueNumber.includes('_') ? queueNumber.split('_')[1] : queueNumber
+    const displayNumber = `${roomNumber}_${numberPart}`
+    const typeText = '专点见客'
+
+    const room = meetingRooms.value.find(r => r.name === roomName ||
+      (r.name.includes('号') && parseInt(r.name.replace(/\D/g, '')) === roomNumber))
+    const roomCompanyName = room && room.companyName ? room.companyName : companyName
+    const roomQuotePoints = room && room.quotePoints ? room.quotePoints : '100'
+    const printer = 'GP-C80 Series'
+    const paperWidth = 800
+    const now = new Date()
+    const printTime = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+
+    if (typeof window.LODOP !== 'undefined') {
+      LODOP.PRINT_INIT('排号票打印预览')
+      LODOP.SET_PRINTER_INDEX(printer)
+      LODOP.SET_PRINT_PAGESIZE(1, paperWidth, 2100, '')
+      LODOP.SET_PRINT_MODE('PREVIEW_IN_BROWSE', 0)
+      LODOP.SET_PRINT_MODE('CATCH_PRINT_STATUS', 0)
+
+      LODOP.ADD_PRINT_TEXT(20, 0, 270, 50, '新悦翔玩具展馆')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 18)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+      LODOP.SET_PRINT_STYLEA(0, 'Alignment', 2)
+
+      LODOP.ADD_PRINT_TEXT(80, 0, 270, 45, displayRoomName)
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 16)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+      LODOP.SET_PRINT_STYLEA(0, 'Alignment', 2)
+
+      LODOP.ADD_PRINT_TEXT(130, 0, 270, 45, typeText)
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 16)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+      LODOP.SET_PRINT_STYLEA(0, 'Alignment', 2)
+
+      LODOP.ADD_PRINT_TEXT(180, 20, paperWidth - 40, 30, '----------------------------------------')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 9)
+
+      LODOP.ADD_PRINT_TEXT(230, 30, 130, 40, '客户名称:')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 13)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+
+      LODOP.ADD_PRINT_TEXT(230, 170, paperWidth - 200, 40, roomCompanyName)
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 13)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+
+      LODOP.ADD_PRINT_TEXT(285, 30, 130, 40, '厂商名称：')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 13)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+
+      LODOP.ADD_PRINT_TEXT(285, 170, paperWidth - 200, 40, companyName)
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 13)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 0.5)
+
+      LODOP.ADD_PRINT_TEXT(340, 30, 130, 40, '排号:')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 13)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+
+      LODOP.ADD_PRINT_TEXT(340, 170, paperWidth - 200, 40, displayNumber)
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 20)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+      LODOP.SET_PRINT_STYLEA(0, 'Color', '#000000')
+
+      const itemNumbers = (itemNumber && itemNumber.trim() !== '') ? itemNumber.split(',').map(n => n.trim()).filter(n => n) : []
+
+      if (itemNumbers.length > 0) {
+        LODOP.ADD_PRINT_TEXT(395, 30, 130, 40, '货号:')
+        LODOP.SET_PRINT_STYLEA(0, 'FontSize', 13)
+        LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+
+        itemNumbers.forEach((num, idx) => {
+          LODOP.ADD_PRINT_TEXT(395 + idx * 25, 170, paperWidth - 200, 30, num)
+          LODOP.SET_PRINT_STYLEA(0, 'FontSize', 13)
+          LODOP.SET_PRINT_STYLEA(0, 'Bold', 0.5)
+        })
+      }
+
+      const itemHeight = itemNumbers.length > 0 ? itemNumbers.length * 25 : 0
+      const baseY = 395 + (itemNumbers.length > 0 ? 30 + itemHeight : 0)
+      const sepY = baseY + 15
+      const tipY = sepY + 40
+      const tip1Y = tipY + 40
+      const tip2Y = tip1Y + 45
+      const orderY = tip2Y + 40
+      const timeY = orderY + 20
+
+      LODOP.ADD_PRINT_TEXT(sepY, 20, paperWidth - 40, 30, '----------------------------------------')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 9)
+
+      LODOP.ADD_PRINT_TEXT(tipY, 30, paperWidth - 60, 30, '温馨提示:')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 10)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+
+      LODOP.ADD_PRINT_TEXT(tip1Y, 10, paperWidth - 60, 30, '1. 过号重排(过号排序于当前洽谈号的三个正排号后)')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 8)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 0.5)
+      LODOP.SET_PRINT_STYLEA(0, 'Color', '#000000')
+
+      LODOP.ADD_PRINT_TEXT(tip2Y, 10, paperWidth - 60, 30, '2. 洽谈如需留样，若不能留样请告知公司')
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 8)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 0.5)
+      LODOP.SET_PRINT_STYLEA(0, 'Color', '#000000')
+
+      const datePart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+      const orderInfo = `${datePart}-${displayNumber}-${roomQuotePoints}`
+      LODOP.ADD_PRINT_TEXT(orderY, 60, paperWidth - 120, 30, orderInfo)
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 12)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+
+      LODOP.ADD_PRINT_TEXT(timeY, 60, paperWidth, 40, printTime)
+      LODOP.SET_PRINT_STYLEA(0, 'FontSize', 12)
+      LODOP.SET_PRINT_STYLEA(0, 'Bold', 1)
+      LODOP.SET_PRINT_STYLEA(0, 'Align', 2)
+
+      LODOP.PREVIEW()
+    } else {
+      showCustomMessage('请先安装C-Lodop打印控件！请检查 http://localhost:8000 是否可访问')
+    }
+  } catch (e) {
+    console.error('预览失败:', e)
+    showCustomMessage('预览失败: ' + e.message)
+  }
+}
+
 const isAllSelected = computed(() => {
   return filteredTableData.value.length > 0 && 
          filteredTableData.value.every(item => selectedIds.value.has(item.id))
@@ -425,6 +555,8 @@ const loadTableData = async () => {
       const activeList = res.data.list.filter(item => item.status !== 'cancelled')
       tableData.value = activeList.map(item => ({
         id: item.id,
+        roomId: item.roomId,
+        companyId: item.companyId,
         roomNumber: item.meetingRoom?.name || `${item.roomId}号洽谈室`,
         companyName: item.company?.companyName || item.customer?.companyName || '',
         itemNumber: item.company?.itemNumber || '',
@@ -1035,6 +1167,88 @@ const remindCurrent = () => {
   }
 }
 
+const handleSetNewQueueNumber = async () => {
+  if (selectedIds.value.size === 0) {
+    showCustomMessage('请先勾选要设置排号的厂商')
+    return
+  }
+
+  // 获取选中的未排号且未完成的厂商
+  const selectedItems = filteredTableData.value.filter(item =>
+    selectedIds.value.has(item.id) && !item.queueNumber && !item.completed
+  )
+
+  if (selectedItems.length === 0) {
+    showCustomMessage('勾选的厂商都已排号，无需设置')
+    return
+  }
+
+  // 检查是否有已排号或已完成的被勾选
+  const skippedCount = [...selectedIds.value].filter(id => {
+    const item = filteredTableData.value.find(row => row.id === id)
+    return item && (item.queueNumber || item.completed)
+  }).length
+
+  if (skippedCount > 0) {
+    showCustomMessage(`有 ${skippedCount} 条数据已排号或已完成，已跳过。仅对未排号且未完成的厂商设置排号。`)
+  }
+
+  let successCount = 0
+  let failCount = 0
+  const failMessages = []
+  const successItems = []
+
+  for (const item of selectedItems) {
+    try {
+      const res = await addQueue({
+        companyId: item.companyId,
+        roomId: item.roomId
+      })
+      if (res.code === 200) {
+        successCount++
+        successItems.push({
+          companyId: item.companyId,
+          roomId: item.roomId,
+          companyName: item.companyName,
+          itemNumber: item.itemNumber
+        })
+      } else {
+        failCount++
+        failMessages.push(`${item.companyName}: ${res.message || '排号失败'}`)
+      }
+    } catch (error) {
+      console.error('设置排号失败:', item.id, error)
+      failCount++
+      failMessages.push(`${item.companyName}: ${error.message || '排号失败'}`)
+    }
+  }
+
+  selectedIds.value.clear()
+  selectedIds.value = new Set(selectedIds.value)
+
+  let msg = `成功设置 ${successCount} 条排号`
+  if (failCount > 0) {
+    msg += `，${failCount} 条失败`
+    if (failMessages.length > 0) {
+      msg += `\n${failMessages.join('\n')}`
+    }
+  }
+  showCustomMessage(msg)
+  await loadTableData()
+
+  // 为每个成功设置排号的厂商弹出打印预览
+  for (const successItem of successItems) {
+    const newItem = tableData.value.find(row =>
+      row.companyId === successItem.companyId &&
+      row.roomId === successItem.roomId &&
+      row.queueNumber
+    )
+    if (newItem) {
+      previewQueueTicket(newItem.roomNumber, newItem.queueNumber, newItem.companyName, newItem.itemNumber)
+    }
+  }
+}
+
 const handleRequeue = async () => {
   if (selectedIds.value.size === 0) {
     showCustomMessage('请先勾选要重排的厂商')
@@ -1068,13 +1282,18 @@ const handleRequeue = async () => {
   }
 
   try {
-    await requeue(item.id)
+    const res = await requeue(item.id)
 
     selectedIds.value.clear()
     selectedIds.value = new Set(selectedIds.value)
 
     showCustomMessage('重排成功')
     await loadTableData()
+
+    const newItem = filteredTableData.value.find(row => row.id === item.id)
+    if (newItem && newItem.queueNumber) {
+      previewQueueTicket(newItem.roomNumber, newItem.queueNumber, newItem.companyName, newItem.itemNumber)
+    }
   } catch (error) {
     console.error('重排失败:', error)
     showCustomMessage(error.message || '重排失败')
