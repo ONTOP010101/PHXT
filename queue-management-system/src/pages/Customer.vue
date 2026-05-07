@@ -228,6 +228,7 @@ import { ref, computed, onMounted } from 'vue'
 import { UserPlus, Search, RotateCcw, Eye, Edit, Trash2, ChevronLeft, ChevronRight } from 'lucide-vue-next'
 import { useUserStore } from '@/store/modules/user'
 import { getCustomerList, addCustomer, updateCustomer as updateCustomerApi, deleteCustomer as deleteCustomerApi } from '../api/customer'
+import { addLog } from '../api/log'
 
 const userStore = useUserStore()
 
@@ -296,6 +297,46 @@ const showCustomMessage = (msg) => {
 
 const closeMessage = () => {
   showMessage.value = false
+}
+
+const originalCustomerData = ref({})
+
+const recordCustomerLog = async (action, customer, status = 1, extraDetail = '') => {
+  try {
+    let detail = ''
+    if (customer) {
+      const parts = [`客户编号: ${customer.id || '-'}`]
+      if (customer.companyName) parts.push(`公司名称: ${customer.companyName}`)
+      if (customer.contactPerson) parts.push(`联系人: ${customer.contactPerson}`)
+      if (customer.phone) parts.push(`联系电话: ${customer.phone}`)
+      detail = parts.join(', ')
+    }
+    if (extraDetail) {
+      detail = detail ? detail + ' | ' + extraDetail : extraDetail
+    }
+    await addLog({
+      module: '客户资料',
+      action: action,
+      targetId: customer?.id?.toString() || '',
+      detail: detail,
+      status: status
+    })
+  } catch (error) {
+    console.error('记录日志失败:', error)
+  }
+}
+
+const buildChangeDetail = (original, updated) => {
+  const changes = []
+  const fieldNames = { companyName: '公司名称', contactPerson: '联系人', phone: '联系电话' }
+  for (const key of Object.keys(fieldNames)) {
+    const oldVal = original[key] || '-'
+    const newVal = updated[key] || '-'
+    if (oldVal !== newVal) {
+      changes.push(`${fieldNames[key]}: ${oldVal} → ${newVal}`)
+    }
+  }
+  return changes.length > 0 ? '变更内容: ' + changes.join(', ') : '无字段变更'
 }
 
 // 分页方法
@@ -373,13 +414,17 @@ const saveCustomer = async () => {
       phone: newCustomer.value.phone
     })
     if (response.code === 200) {
+      const newCustomerData = { ...newCustomer.value, id: response.data?.id || '' }
+      await recordCustomerLog('新增客户', newCustomerData, 1)
       closeAddModal()
       showCustomMessage('客户添加成功')
       loadCustomers()
     } else {
+      await recordCustomerLog('新增客户', newCustomer.value, 0)
       showCustomMessage(response.message || '添加失败')
     }
   } catch (error) {
+    await recordCustomerLog('新增客户', newCustomer.value, 0)
     console.error('Save customer error:', error)
     showCustomMessage('添加失败，请稍后重试')
   }
@@ -397,6 +442,7 @@ const closeViewModal = () => {
 
 // 编辑客户相关方法
 const editCustomer = (customer) => {
+  originalCustomerData.value = { ...customer }
   editCustomerData.value = { ...customer }
   showEditModal.value = true
 }
@@ -419,13 +465,17 @@ const updateCustomer = async () => {
       phone: editCustomerData.value.phone
     })
     if (response.code === 200) {
+      const changeDetail = buildChangeDetail(originalCustomerData.value, editCustomerData.value)
+      await recordCustomerLog('修改客户', editCustomerData.value, 1, changeDetail)
       closeEditModal()
       showCustomMessage('客户信息更新成功')
       loadCustomers()
     } else {
+      await recordCustomerLog('修改客户', editCustomerData.value, 0)
       showCustomMessage(response.message || '更新失败')
     }
   } catch (error) {
+    await recordCustomerLog('修改客户', editCustomerData.value, 0)
     console.error('Update customer error:', error)
     showCustomMessage('更新失败，请稍后重试')
   }
@@ -445,13 +495,16 @@ const confirmDelete = async () => {
   try {
     const response = await deleteCustomerApi(deleteCustomerData.value.id)
     if (response.code === 200) {
+      await recordCustomerLog('删除客户', deleteCustomerData.value, 1)
       closeDeleteModal()
       showCustomMessage('客户删除成功')
       loadCustomers()
     } else {
+      await recordCustomerLog('删除客户', deleteCustomerData.value, 0)
       showCustomMessage(response.message || '删除失败')
     }
   } catch (error) {
+    await recordCustomerLog('删除客户', deleteCustomerData.value, 0)
     console.error('Delete customer error:', error)
     showCustomMessage('删除失败，请稍后重试')
   }

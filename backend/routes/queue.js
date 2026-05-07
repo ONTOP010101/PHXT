@@ -13,9 +13,19 @@ const broadcastAllRooms = async () => {
   }
 }
 
+// 获取洽谈室的编号（从名称中提取数字，如"7号洽谈室" → 7）
+const getRoomNumber = async (roomId, transaction) => {
+  const room = await db.MeetingRoom.findByPk(roomId, { transaction })
+  if (!room) return roomId
+  const match = room.name.match(/\d+/)
+  return match ? parseInt(match[0]) : roomId
+}
+
 // 生成下一个可用排号（在事务内执行，避免竞态条件）
 const generateNextQueueNumber = async (roomId, transaction) => {
   const todayStart = new Date(new Date().toDateString())
+
+  const roomNumber = await getRoomNumber(roomId, transaction)
 
   // 使用事务查询今天该洽谈室所有非取消状态的排号
   const todayQueues = await db.Queue.findAll({
@@ -40,10 +50,10 @@ const generateNextQueueNumber = async (roomId, transaction) => {
 
   // 确保号码不重复（考虑所有类型的排号）
   const allQueueNumbers = new Set(todayQueues.map(q => q.queueNumber).filter(Boolean))
-  let candidateNumber = `${roomId}_${String(nextNum).padStart(3, '0')}`
+  let candidateNumber = `${roomNumber}_${String(nextNum).padStart(3, '0')}`
   while (allQueueNumbers.has(candidateNumber)) {
     nextNum++
-    candidateNumber = `${roomId}_${String(nextNum).padStart(3, '0')}`
+    candidateNumber = `${roomNumber}_${String(nextNum).padStart(3, '0')}`
   }
 
   return candidateNumber
@@ -52,6 +62,7 @@ const generateNextQueueNumber = async (roomId, transaction) => {
 // 生成重排号（过号重排，排在当前叫号后3位）
 const generateRequeueNumber = async (queue, transaction) => {
   const todayStart = new Date(new Date().toDateString())
+  const roomNumber = await getRoomNumber(queue.roomId, transaction)
 
   const allQueues = await db.Queue.findAll({
     where: {
@@ -107,7 +118,7 @@ const generateRequeueNumber = async (queue, transaction) => {
     // 从baseNumber开始往后找，只在已存在的基础号后面找空余后缀
     while (baseNumber <= maxBaseNum) {
       for (let suffix = 1; suffix <= 3; suffix++) {
-        const candidate = `${queue.roomId}_${String(baseNumber).padStart(3, '0')}-${suffix}`
+        const candidate = `${roomNumber}_${String(baseNumber).padStart(3, '0')}-${suffix}`
         if (!allQueueNumbers.has(candidate)) {
           return candidate
         }
@@ -115,18 +126,18 @@ const generateRequeueNumber = async (queue, transaction) => {
       baseNumber++
     }
     // 如果所有已有基础号的后缀都被占用了，生成新的主号
-    let newQueueNumber = `${queue.roomId}_${String(maxBaseNum + 1).padStart(3, '0')}`
+    let newQueueNumber = `${roomNumber}_${String(maxBaseNum + 1).padStart(3, '0')}`
     while (allQueueNumbers.has(newQueueNumber)) {
       const num = parseInt(newQueueNumber.split('_')[1]) + 1
-      newQueueNumber = `${queue.roomId}_${String(num).padStart(3, '0')}`
+      newQueueNumber = `${roomNumber}_${String(num).padStart(3, '0')}`
     }
     return newQueueNumber
   } else {
     // 当前叫号后不足3个，直接生成新的主号排在队尾
-    let newQueueNumber = `${queue.roomId}_${String(maxBaseNum + 1).padStart(3, '0')}`
+    let newQueueNumber = `${roomNumber}_${String(maxBaseNum + 1).padStart(3, '0')}`
     while (allQueueNumbers.has(newQueueNumber)) {
       const num = parseInt(newQueueNumber.split('_')[1]) + 1
-      newQueueNumber = `${queue.roomId}_${String(num).padStart(3, '0')}`
+      newQueueNumber = `${roomNumber}_${String(num).padStart(3, '0')}`
     }
     return newQueueNumber
   }
@@ -225,7 +236,7 @@ router.get('/list', async (req, res) => {
 router.post('/add', async (req, res) => {
   const transaction = await db.sequelize.transaction()
   try {
-    const { customerId, companyId, roomId } = req.body
+    const { customerId, companyId, roomId, queueNumber: inputQueueNumber, status: inputStatus } = req.body
 
     if (!roomId || (!customerId && !companyId)) {
       await transaction.rollback()
@@ -305,7 +316,9 @@ router.post('/add', async (req, res) => {
     }
 
     let queueNumber = ''
-    if (customerId || (companyId && room.type === 'public')) {
+    if (inputQueueNumber) {
+      queueNumber = inputQueueNumber
+    } else if (customerId || (companyId && room.type === 'public')) {
       queueNumber = await generateNextQueueNumber(roomId, transaction)
     }
 
@@ -314,7 +327,7 @@ router.post('/add', async (req, res) => {
       companyId,
       roomId,
       queueNumber,
-      status: 'waiting'
+      status: inputStatus || 'waiting'
     }, { transaction })
 
     await transaction.commit()
@@ -593,6 +606,59 @@ router.post('/update', async (req, res) => {
     })
   } catch (error) {
     console.error('Update queue error:', error)
+    res.json({ code: 500, message: '服务器内部错误' })
+  }
+})
+
+// 修复排号前缀不一致的数据（例如7号室的排号前缀为8_的问题）
+router.post('/repair-numbers', async (req, res) => {
+  const transaction = await db.sequelize.transaction()
+  try {
+    const rooms = await db.MeetingRoom.findAll({ transaction })
+    const repairs = []
+
+    for (const room of rooms) {
+      const match = room.name.match(/\d+/)
+      if (!match) continue
+      const correctPrefix = `${parseInt(match[0])}_`
+
+      const queues = await db.Queue.findAll({
+        where: {
+          roomId: room.id,
+          queueNumber: { [db.Sequelize.Op.ne]: null }
+        },
+        transaction,
+        lock: transaction.LOCK.UPDATE
+      })
+
+      for (const queue of queues) {
+        const oldNumber = queue.queueNumber
+        const suffix = oldNumber.split('_')[1]
+        if (!suffix) continue
+        const currentPrefix = oldNumber.split('_')[0] + '_'
+        if (currentPrefix !== correctPrefix) {
+          const newNumber = correctPrefix + suffix
+          await queue.update({ queueNumber: newNumber }, { transaction })
+          repairs.push({
+            id: queue.id,
+            roomName: room.name,
+            oldNumber,
+            newNumber
+          })
+        }
+      }
+    }
+
+    await transaction.commit()
+
+    res.json({
+      code: 200,
+      message: `修复完成，共修复 ${repairs.length} 条记录`,
+      data: { repairs }
+    })
+  } catch (error) {
+    await transaction.rollback()
+    console.error('Repair queue numbers error:', error)
     res.json({ code: 500, message: '服务器内部错误' })
   }
 })

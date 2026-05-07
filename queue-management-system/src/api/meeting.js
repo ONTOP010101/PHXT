@@ -55,6 +55,14 @@ export const closeMeeting = (id) => {
   })
 }
 
+export const restoreMeeting = (id, restoreData) => {
+  return request({
+    url: '/meeting/restore',
+    method: 'post',
+    data: { id, restoreData }
+  })
+}
+
 export const deleteMeeting = (id) => {
   return request({
     url: `/meeting/delete/${id}`,

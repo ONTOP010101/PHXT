@@ -15,7 +15,8 @@ async function updatePermissions() {
         display: { enable: true, view: true, config: true, control: true },
         miniApp: { enable: true, view: true, config: true },
         role: { enable: true, view: true, add: true, edit: true, delete: true, permission: true },
-        user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true }
+        user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true },
+        systemLog: { enable: true, view: true, clear: true }
       }
       await superAdminRole.update({ permissions })
       console.log('超级管理员权限更新完成')
@@ -33,7 +34,8 @@ async function updatePermissions() {
         display: { enable: true, view: true, config: true, control: true },
         miniApp: { enable: true, view: true, config: true },
         role: { enable: true, view: true, add: true, edit: true, delete: true, permission: false },
-        user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true }
+        user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true },
+        systemLog: { enable: true, view: true, clear: false }
       }
       await adminRole.update({ permissions })
       console.log('管理员权限更新完成')
@@ -51,7 +53,8 @@ async function updatePermissions() {
         display: { enable: true, view: true, config: false, control: true },
         miniApp: { enable: false, view: false, config: false },
         role: { enable: false, view: false, add: false, edit: false, delete: false, permission: false },
-        user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false }
+        user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false },
+        systemLog: { enable: false, view: false, clear: false }
       }
       await salesmanRole.update({ permissions })
       console.log('业务员权限更新完成')
@@ -69,7 +72,8 @@ async function updatePermissions() {
         display: { enable: true, view: true, config: false, control: false },
         miniApp: { enable: false, view: false, config: false },
         role: { enable: false, view: false, add: false, edit: false, delete: false, permission: false },
-        user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false }
+        user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false },
+        systemLog: { enable: false, view: false, clear: false }
       }
       await guestRole.update({ permissions })
       console.log('只读访客权限更新完成')

@@ -34,7 +34,8 @@ async function createTables() {
           display: { enable: true, view: true, config: true, control: true },
           miniApp: { enable: true, view: true, config: true },
           role: { enable: true, view: true, add: true, edit: true, delete: true, permission: true },
-          user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true }
+          user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true },
+          systemLog: { enable: true, view: true, clear: true }
         })
       })
       console.log('超级管理员角色创建完成')
@@ -55,7 +56,8 @@ async function createTables() {
           display: { enable: true, view: true, config: true, control: true },
           miniApp: { enable: true, view: true, config: true },
           role: { enable: true, view: true, add: true, edit: true, delete: true, permission: false },
-          user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true }
+          user: { enable: true, view: true, add: true, edit: true, delete: true, resetPwd: true },
+          systemLog: { enable: true, view: true, clear: false }
         })
       })
       console.log('管理员角色创建完成')
@@ -76,7 +78,8 @@ async function createTables() {
           display: { enable: true, view: true, config: false, control: true },
           miniApp: { enable: false, view: false, config: false },
           role: { enable: false, view: false, add: false, edit: false, delete: false, permission: false },
-          user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false }
+          user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false },
+          systemLog: { enable: false, view: false, clear: false }
         })
       })
       console.log('业务员角色创建完成')
@@ -97,7 +100,8 @@ async function createTables() {
           display: { enable: true, view: true, config: false, control: false },
           miniApp: { enable: false, view: false, config: false },
           role: { enable: false, view: false, add: false, edit: false, delete: false, permission: false },
-          user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false }
+          user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false },
+          systemLog: { enable: false, view: false, clear: false }
         })
       })
       console.log('只读访客角色创建完成')

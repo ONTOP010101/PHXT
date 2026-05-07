@@ -1,7 +1,7 @@
 <template>
   <div id="page-meeting" class="slide-in">
     <div v-if="showMessage" class="custom-message" @click="closeMessage">
-      <div class="message-content">{{ message }}</div>
+      <div class="message-content" v-html="sanitizedMessage"></div>
       <button class="message-close" @click.stop="closeMessage">确定</button>
     </div>
     <div class="flex items-center justify-between mb-6">
@@ -77,11 +77,20 @@
     <!-- Password Modal -->
     <div v-if="showPasswordModal" class="fixed inset-0 bg-black bg-opacity-20 backdrop-blur-sm flex items-center justify-center z-50 h-screen" @click="closePasswordModal">
       <div class="bg-white rounded-lg p-6 w-full max-w-md mx-4 max-h-[80vh] overflow-y-auto transform transition-all duration-300 scale-100 shadow-xl border border-surface-200" @click.stop>
-        <h3 class="text-lg font-semibold mb-4">请输入密码</h3>
+        <h3 class="text-lg font-semibold mb-4">{{ passwordAction === 'close' ? '关闭洽谈室' : '暂停洽谈室' }}</h3>
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-surface-700 mb-1">密码</label>
             <input type="password" v-model="passwordInput" class="w-full px-4 py-2 border border-surface-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent" placeholder="请输入密码" />
+          </div>
+          <div v-if="passwordAction === 'close'" class="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <svg class="w-5 h-5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-sm text-blue-800">
+              <span class="font-medium">数据已自动保留</span>
+              <span class="block text-xs text-blue-600 mt-0.5">关闭后可通过系统日志恢复数据</span>
+            </span>
           </div>
         </div>
         <div class="flex gap-3 justify-end mt-6">
@@ -190,6 +199,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/store/modules/user'
 import { getMeetingList, addMeeting, updateMeeting, enableMeeting, pauseMeeting, closeMeeting } from '@/api/meeting'
 import { getCustomerList } from '@/api/customer'
+import { addLog } from '@/api/log'
 
 const userStore = useUserStore()
 
@@ -210,9 +220,15 @@ const newRoom = ref({ name: '', status: 'free' })
 const passwordInput = ref('')
 const passwordAction = ref('')
 const passwordRoomId = ref(null)
+const keepRoomData = ref(false)
+const isEnablingRoom = ref(false) // 标记是否是启用操作
 
 const showMessage = ref(false)
 const message = ref('')
+
+const sanitizedMessage = computed(() => {
+  return message.value.replace(/\n/g, '<br>')
+})
 
 const showCustomMessage = (msg) => {
   message.value = msg
@@ -221,6 +237,37 @@ const showCustomMessage = (msg) => {
 
 const closeMessage = () => {
   showMessage.value = false
+}
+
+const recordMeetingLog = async (action, room, status = 1, extraDetail = '') => {
+  try {
+    let detail = ''
+    if (room) {
+      const parts = [`洽谈室: ${room.name || '-'}`]
+      const statusMap = { free: '空闲', occupied: '启用', disabled: '暂停' }
+      if (room.status) parts.push(`状态: ${statusMap[room.status] || room.status}`)
+      if (room.type) {
+        const typeMap = { public: '公开见客', private: '专点见客' }
+        parts.push(`类型: ${typeMap[room.type] || room.type}`)
+      }
+      if (room.companyName) parts.push(`公司: ${room.companyName}`)
+      if (room.quotePoints) parts.push(`报价点数: ${room.quotePoints}`)
+      if (room.visitRequirement) parts.push(`见客要求: ${room.visitRequirement}`)
+      detail = parts.join(', ')
+    }
+    if (extraDetail) {
+      detail = detail ? detail + ' | ' + extraDetail : extraDetail
+    }
+    await addLog({
+      module: '洽谈室管理',
+      action: action,
+      targetId: room?.id?.toString() || '',
+      detail: detail,
+      status: status
+    })
+  } catch (error) {
+    console.error('记录日志失败:', error)
+  }
 }
 
 // 客户资料列表 - 从后端API获取
@@ -324,6 +371,7 @@ const handleRoomAction = (roomId, action) => {
     const room = meetingRooms.value.find(r => r.id === roomId)
     if (room) {
       if (room.status === 'free') {
+        isEnablingRoom.value = true // 标记为启用操作
         editingRoom.value = {
           id: room.id,
           name: room.name,
@@ -337,15 +385,17 @@ const handleRoomAction = (roomId, action) => {
         editCompanyDropdownOpen.value = false
         showEditModal.value = true
       } else if (room.status === 'disabled') {
-        // 暂停状态启用，直接恢复
         enableMeeting(roomId).then(res => {
           if (res.code === 200) {
+            recordMeetingLog('启用洽谈室', room, 1)
             showCustomMessage('启用成功')
             loadMeetings()
           } else {
+            recordMeetingLog('启用洽谈室', room, 0)
             showCustomMessage(res.message || '启用失败')
           }
         }).catch(err => {
+          recordMeetingLog('启用洽谈室', room, 0)
           console.error('启用洽谈室失败:', err)
           showCustomMessage('启用失败')
         })
@@ -362,6 +412,7 @@ const handleRoomAction = (roomId, action) => {
   } else if (action === 'details') {
     const room = meetingRooms.value.find(r => r.id === roomId)
     if (room) {
+      isEnablingRoom.value = false // 标记为编辑操作
       editingRoom.value = {
         id: room.id,
         name: room.name,
@@ -403,13 +454,16 @@ const saveAdd = async () => {
   try {
     const response = await addMeeting(newRoom.value)
     if (response.code === 200) {
+      await recordMeetingLog('新增洽谈室', { ...newRoom.value, id: response.data?.id || '' }, 1)
       showCustomMessage('新增成功')
       closeAddModal()
       loadMeetings()
     } else {
+      await recordMeetingLog('新增洽谈室', newRoom.value, 0)
       showCustomMessage(response.message || '新增失败')
     }
   } catch (error) {
+    await recordMeetingLog('新增洽谈室', newRoom.value, 0)
     console.error('新增洽谈室失败:', error)
     showCustomMessage('新增失败，请稍后重试')
   }
@@ -419,6 +473,7 @@ const closeEditModal = () => {
   showEditModal.value = false
   editCompanySearch.value = ''
   editCompanyDropdownOpen.value = false
+  isEnablingRoom.value = false // 重置标记
 }
 
 const saveEdit = async () => {
@@ -438,15 +493,24 @@ const saveEdit = async () => {
   try {
     const response = await updateMeeting(editingRoom.value)
     if (response.code === 200) {
-      showCustomMessage('更新成功')
+      // 根据 isEnablingRoom 判断是启用还是编辑
+      const actionName = isEnablingRoom.value ? '启用洽谈室' : '编辑洽谈室'
+      await recordMeetingLog(actionName, editingRoom.value, 1)
+      showCustomMessage(isEnablingRoom.value ? '启用成功' : '更新成功')
       closeEditModal()
       loadMeetings()
     } else {
+      const actionName = isEnablingRoom.value ? '启用洽谈室' : '编辑洽谈室'
+      await recordMeetingLog(actionName, editingRoom.value, 0)
       showCustomMessage(response.message || '更新失败')
     }
   } catch (error) {
+    const actionName = isEnablingRoom.value ? '启用洽谈室' : '编辑洽谈室'
+    await recordMeetingLog(actionName, editingRoom.value, 0)
     console.error('更新洽谈室失败:', error)
     showCustomMessage('更新失败，请稍后重试')
+  } finally {
+    isEnablingRoom.value = false // 重置标记
   }
 }
 
@@ -455,35 +519,71 @@ const closePasswordModal = () => {
   passwordInput.value = ''
   passwordAction.value = ''
   passwordRoomId.value = null
+  keepRoomData.value = false
 }
 
 const confirmPassword = async () => {
   if (passwordInput.value === '121118') {
     if (passwordAction.value === 'pause') {
       try {
+        const room = meetingRooms.value.find(r => r.id === passwordRoomId.value)
         const response = await pauseMeeting(passwordRoomId.value)
         if (response.code === 200) {
+          await recordMeetingLog('暂停洽谈室', room, 1)
           showCustomMessage('暂停成功')
           closePasswordModal()
           loadMeetings()
         } else {
+          await recordMeetingLog('暂停洽谈室', room, 0)
           showCustomMessage(response.message || '暂停失败')
         }
       } catch (error) {
+        await recordMeetingLog('暂停洽谈室', null, 0)
         console.error('暂停洽谈室失败:', error)
         showCustomMessage('暂停失败')
       }
     } else if (passwordAction.value === 'close') {
       try {
+        const room = meetingRooms.value.find(r => r.id == passwordRoomId.value)
+        // 先保存关闭前的数据，避免 loadMeetings 后数据被清空
+        const roomBeforeClose = room ? { ...room } : null
         const response = await closeMeeting(passwordRoomId.value)
         if (response.code === 200) {
+          const restoreData = response.data?.restoreData
+          let restoreInfo = ''
+          let queueInfo = ''
+          if (restoreData) {
+            const statusMap = { free: '空闲', occupied: '启用', disabled: '暂停' }
+            const typeMap = { public: '公开见客', private: '专点见客' }
+            const parts = []
+            if (restoreData.status) parts.push(`状态: ${statusMap[restoreData.status] || restoreData.status}`)
+            if (restoreData.type) parts.push(`类型: ${typeMap[restoreData.type] || restoreData.type}`)
+            if (restoreData.companyName) parts.push(`公司: ${restoreData.companyName}`)
+            if (restoreData.quotePoints) parts.push(`报价点数: ${restoreData.quotePoints}`)
+            if (restoreData.visitRequirement) parts.push(`见客要求: ${restoreData.visitRequirement}`)
+            restoreInfo = '恢复操作: ' + parts.join(', ')
+            
+            if (restoreData.queues && restoreData.queues.length > 0) {
+              const queueParts = restoreData.queues.map(q => 
+                `${q.queueNumber || '无号'}${q.customerName ? '(' + q.customerName + ')' : ''}`
+              )
+              queueInfo = '排号记录: ' + queueParts.join(', ')
+            }
+          }
+          let fullDetail = restoreInfo + (queueInfo ? ' | ' + queueInfo : '')
+          if (restoreData) {
+            fullDetail += ' [RESTORE_JSON]' + JSON.stringify(restoreData) + '[/RESTORE_JSON]'
+          }
+          await recordMeetingLog('关闭洽谈室', roomBeforeClose, 1, fullDetail)
           showCustomMessage('关闭成功')
           closePasswordModal()
           loadMeetings()
         } else {
+          await recordMeetingLog('关闭洽谈室', roomBeforeClose, 0)
           showCustomMessage(response.message || '关闭失败')
         }
       } catch (error) {
+        await recordMeetingLog('关闭洽谈室', null, 0)
         console.error('关闭洽谈室失败:', error)
         showCustomMessage('关闭失败')
       }

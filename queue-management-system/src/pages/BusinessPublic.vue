@@ -1,7 +1,7 @@
 <template>
   <div id="page-business-public" class="slide-in h-screen flex flex-col overflow-hidden">
     <div v-if="showMessage" class="custom-message" @click="closeMessage">
-      <div class="message-content">{{ message }}</div>
+      <div class="message-content" v-html="sanitizedMessage"></div>
       <button class="message-close" @click.stop="closeMessage">确定</button>
     </div>
     <div class="card p-4 mx-4 mb-4 flex-shrink-0" style="height: 200px;">
@@ -193,6 +193,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getMeetingList, pauseMeeting, closeMeeting } from '../api/meeting'
 import { addCompany as createCompany } from '../api/company'
 import { getQueueList, addQueue, callNextQueue, completeQueue, cancelQueue, requeue, batchCallQueue } from '../api/queue'
+import { addLog } from '../api/log'
 
 const meetingRooms = ref([])
 const selectedRoomObj = ref(null)
@@ -218,6 +219,10 @@ const selectedIds = ref(new Set())
 const showMessage = ref(false)
 const message = ref('')
 
+const sanitizedMessage = computed(() => {
+  return message.value.replace(/\n/g, '<br>')
+})
+
 const showCustomMessage = (msg) => {
   message.value = msg
   showMessage.value = true
@@ -225,6 +230,46 @@ const showCustomMessage = (msg) => {
 
 const closeMessage = () => {
   showMessage.value = false
+}
+
+const recordBusinessLog = async (action, room, tableRecords = [], status = 1, extraDetail = '') => {
+  try {
+    let detail = ''
+    if (room) {
+      const parts = [`洽谈室: ${room.name || '-'}`]
+      const statusMap = { free: '空闲', occupied: '启用', disabled: '暂停' }
+      if (room.status) parts.push(`状态: ${statusMap[room.status] || room.status}`)
+      if (room.type) {
+        const typeMap = { public: '公开见客', private: '专点见客' }
+        parts.push(`类型: ${typeMap[room.type] || room.type}`)
+      }
+      if (room.companyName) parts.push(`公司: ${room.companyName}`)
+      if (room.quotePoints) parts.push(`报价点数: ${room.quotePoints}`)
+      if (room.visitRequirement) parts.push(`见客要求: ${room.visitRequirement}`)
+      detail = parts.join(', ')
+    }
+    if (tableRecords && tableRecords.length > 0) {
+      const statusLabel = { waiting: '', called: '[已叫]', completed: '[已完成]' }
+      const queueParts = tableRecords.map(q => {
+        const tag = statusLabel[q.status] || (q.completed ? '[已完成]' : '')
+        return `${q.queueNumber || '无号'}(${q.companyName || '-'})${tag}`
+      })
+      detail = detail + (detail ? ' | ' : '') + '排号记录: ' + queueParts.join(', ')
+      detail += ' [QUEUE_DATA]' + JSON.stringify(tableRecords) + '[/QUEUE_DATA]'
+    }
+    if (extraDetail) {
+      detail = detail ? detail + ' | ' + extraDetail : extraDetail
+    }
+    await addLog({
+      module: '洽谈室管理',
+      action: action,
+      targetId: room?.id?.toString() || '',
+      detail: detail,
+      status: status
+    })
+  } catch (error) {
+    console.error('记录日志失败:', error)
+  }
 }
 
 const showPasswordModal = ref(false)
@@ -289,6 +334,9 @@ const confirmDelete = async () => {
   let failCount = 0
 
   const ids = [...selectedIds.value]
+  const deletedRecords = tableData.value.filter(item => selectedIds.value.has(item.id))
+  const roomForLog = selectedRoomObj.value ? { ...selectedRoomObj.value } : null
+
   for (const id of ids) {
     try {
       await cancelQueue(id)
@@ -303,6 +351,10 @@ const confirmDelete = async () => {
   showDeleteConfirmModal.value = false
   selectedIds.value.clear()
   selectedIds.value = new Set(selectedIds.value)
+
+  const status = failCount === 0 ? 1 : 0
+  await recordBusinessLog('删除排号记录', roomForLog, deletedRecords, status,
+    `成功${successCount}条，失败${failCount}条`)
 
   let msg = `成功删除${successCount}条数据`
   if (failCount > 0) {
@@ -607,7 +659,8 @@ const loadTableData = async () => {
         companyName: item.company?.companyName || item.customer?.companyName || '',
         queueNumber: item.queueNumber,
         phone: item.company?.phone || item.customer?.phone || '',
-        completed: item.completed
+        completed: item.completed,
+        status: item.status
       }))
 
       calledNumbers.value = new Set()
@@ -895,11 +948,21 @@ const handlePause = () => {
 }
 
 const executePause = async () => {
+  const roomBeforePause = selectedRoomObj.value ? { ...selectedRoomObj.value } : null
+  const roomQueueData = tableData.value.filter(item => item.roomNumber === selectedRoom.value)
+
   try {
-    await pauseMeeting(selectedRoomObj.value.id)
-    showCustomMessage(`已经暂停${selectedRoom.value}洽谈室`)
-    await loadRooms()
+    const response = await pauseMeeting(selectedRoomObj.value.id)
+    if (response.code === 200) {
+      await recordBusinessLog('暂停洽谈室', roomBeforePause, roomQueueData, 1)
+      showCustomMessage(`已经暂停${selectedRoom.value}洽谈室`)
+      await loadRooms()
+    } else {
+      await recordBusinessLog('暂停洽谈室', roomBeforePause, roomQueueData, 0)
+      showCustomMessage(response.message || '暂停失败')
+    }
   } catch (error) {
+    await recordBusinessLog('暂停洽谈室', roomBeforePause, roomQueueData, 0)
     console.error('暂停洽谈室失败:', error)
     showCustomMessage(error.message || '暂停失败')
   }
@@ -916,19 +979,34 @@ const handleClose = () => {
 }
 
 const executeClose = async () => {
+  const roomBeforeClose = selectedRoomObj.value ? { ...selectedRoomObj.value } : null
+  const roomQueueData = tableData.value.filter(item => item.roomNumber === selectedRoom.value)
+
   try {
-    await closeMeeting(selectedRoomObj.value.id)
+    const response = await closeMeeting(selectedRoomObj.value.id)
+    if (response.code === 200) {
+      const restoreData = response.data?.restoreData
+      let extraDetail = ''
+      if (restoreData) {
+        extraDetail = '[RESTORE_JSON]' + JSON.stringify(restoreData) + '[/RESTORE_JSON]'
+      }
+      await recordBusinessLog('关闭洽谈室', roomBeforeClose, roomQueueData, 1, extraDetail)
 
-    const closedRoom = selectedRoom.value
-    selectedRoom.value = ''
-    selectedRoomObj.value = null
-    selectedIds.value.clear()
-    selectedIds.value = new Set(selectedIds.value)
+      const closedRoom = selectedRoom.value
+      selectedRoom.value = ''
+      selectedRoomObj.value = null
+      selectedIds.value.clear()
+      selectedIds.value = new Set(selectedIds.value)
 
-    showCustomMessage(`已经关闭${closedRoom}洽谈室`)
-    await loadRooms()
-    await loadTableData()
+      showCustomMessage(`已经关闭${closedRoom}洽谈室`)
+      await loadRooms()
+      await loadTableData()
+    } else {
+      await recordBusinessLog('关闭洽谈室', roomBeforeClose, roomQueueData, 0)
+      showCustomMessage(response.message || '关闭失败')
+    }
   } catch (error) {
+    await recordBusinessLog('关闭洽谈室', roomBeforeClose, roomQueueData, 0)
     console.error('关闭洽谈室失败:', error)
     showCustomMessage(error.message || '关闭失败')
   }

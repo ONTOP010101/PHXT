@@ -161,7 +161,8 @@ router.post('/batch-add', async (req, res) => {
         where: {
           companyId: company.id,
           roomId,
-          completed: false
+          completed: false,
+          status: { [db.Sequelize.Op.ne]: 'cancelled' }
         }
       })
 
@@ -172,7 +173,9 @@ router.post('/batch-add', async (req, res) => {
 
       let queueNumber = ''
       if (room.type === 'public') {
-        // 查询今天该洽谈室所有排号
+        const roomNameMatch = room.name.match(/\d+/)
+        const roomNumber = roomNameMatch ? parseInt(roomNameMatch[0]) : roomId
+
         const todayQueues = await db.Queue.findAll({
           where: {
             roomId,
@@ -182,7 +185,6 @@ router.post('/batch-add', async (req, res) => {
           }
         })
 
-        // 找到最大的已使用号码
         const existingNumbers = todayQueues
           .filter(q => q.queueNumber && !q.queueNumber.includes('-'))
           .map(q => parseInt(q.queueNumber.split('_')[1]))
@@ -192,12 +194,11 @@ router.post('/batch-add', async (req, res) => {
           nextNum = Math.max(...existingNumbers) + 1
         }
 
-        let candidateNumber = `${roomId}_${String(nextNum).padStart(3, '0')}`
+        let candidateNumber = `${roomNumber}_${String(nextNum).padStart(3, '0')}`
 
-        // 双重检查，确保号码不存在
         while (await db.Queue.findOne({ where: { queueNumber: candidateNumber } })) {
           nextNum++
-          candidateNumber = `${roomId}_${String(nextNum).padStart(3, '0')}`
+          candidateNumber = `${roomNumber}_${String(nextNum).padStart(3, '0')}`
         }
 
         queueNumber = candidateNumber

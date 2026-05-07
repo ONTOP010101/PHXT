@@ -9,7 +9,7 @@
 
       <div class="relative z-10 text-center text-white">
         <div class="w-20 h-20 bg-white bg-opacity-20 rounded-2xl flex items-center justify-center mx-auto mb-8 backdrop-blur-sm border border-white border-opacity-30">
-          <i data-lucide="layers" class="w-10 h-10 text-white"></i>
+          <Ticket class="w-10 h-10 text-white" />
         </div>
         <h1 class="text-4xl font-800 mb-3 tracking-tight">个人排号测试</h1>
         <p class="text-blue-200 text-lg mb-12">Queue Management System</p>
@@ -17,7 +17,7 @@
         <div class="space-y-5 text-left max-w-xs mx-auto">
           <div class="flex items-center gap-4 bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur-sm border border-white border-opacity-20">
             <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <i data-lucide="zap" class="w-5 h-5 text-white"></i>
+              <Zap class="w-5 h-5 text-white" />
             </div>
             <div>
               <div class="font-600 text-sm">实时叫号</div>
@@ -26,7 +26,7 @@
           </div>
           <div class="flex items-center gap-4 bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur-sm border border-white border-opacity-20">
             <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <i data-lucide="bar-chart-2" class="w-5 h-5 text-white"></i>
+              <BarChart3 class="w-5 h-5 text-white" />
             </div>
             <div>
               <div class="font-600 text-sm">数据统计</div>
@@ -35,7 +35,7 @@
           </div>
           <div class="flex items-center gap-4 bg-white bg-opacity-10 rounded-xl p-4 backdrop-blur-sm border border-white border-opacity-20">
             <div class="w-10 h-10 bg-white bg-opacity-20 rounded-lg flex items-center justify-center flex-shrink-0">
-              <i data-lucide="shield-check" class="w-5 h-5 text-white"></i>
+              <ShieldCheck class="w-5 h-5 text-white" />
             </div>
             <div>
               <div class="font-600 text-sm">权限管理</div>
@@ -56,7 +56,7 @@
 
         <div v-if="errorMessage" class="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
           <div class="flex items-center gap-3">
-            <i data-lucide="alert-circle" class="w-5 h-5 text-red-500 flex-shrink-0"></i>
+            <AlertCircle class="w-5 h-5 text-red-500 flex-shrink-0" />
             <span class="text-red-600 text-sm">{{ errorMessage }}</span>
           </div>
         </div>
@@ -65,7 +65,7 @@
           <div v-if="showConfirmDialog" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div class="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl">
               <div class="text-center">
-                <i data-lucide="exclamation-circle" class="w-16 h-16 text-red-500 mx-auto mb-4"></i>
+                <AlertTriangle class="w-16 h-16 text-red-500 mx-auto mb-4" />
                 <h3 class="text-lg font-bold text-surface-900 mb-3">账号已在其他设备登录</h3>
                 <p class="text-surface-500 text-sm mb-2">您的账号已在另一台设备登录，当前登录已失效。</p>
                 <p class="text-surface-400 text-xs mb-6">时间：{{ logoutTime }}</p>
@@ -81,17 +81,18 @@
           <div>
             <label class="form-label">账号</label>
             <div class="relative">
-              <i data-lucide="user" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
-              <input v-model="form.username" type="text" placeholder="请输入登录账号" class="form-input pl-10" />
+              <User class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" style="pointer-events: none;" />
+              <input v-model="form.username" type="text" placeholder="请输入登录账号" class="form-input" style="padding: 9px 12px 9px 44px;" />
             </div>
           </div>
           <div>
             <label class="form-label">密码</label>
             <div class="relative">
-              <i data-lucide="lock" class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400"></i>
-              <input v-model="form.password" :type="showPwd ? 'text' : 'password'" placeholder="请输入登录密码" class="form-input pl-10" />
-              <button @click="showPwd = !showPwd" class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600">
-                <i :data-lucide="showPwd ? 'eye-off' : 'eye'" class="w-4 h-4"></i>
+              <Lock class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-400" style="pointer-events: none;" />
+              <input v-model="form.password" :type="showPwd ? 'text' : 'password'" placeholder="请输入登录密码" class="form-input" style="padding: 9px 44px 9px 44px;" />
+              <button @click="showPwd = !showPwd" class="absolute right-3 top-1/2 -translate-y-1/2 text-surface-400 hover:text-surface-600" style="pointer-events: auto;">
+                <EyeOff v-if="showPwd" class="w-5 h-5" />
+                <Eye v-else class="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -103,7 +104,7 @@
             <a href="#" class="text-sm text-primary-600 hover:text-primary-700">忘记密码？</a>
           </div>
           <button @click="handleLogin" class="btn btn-primary w-full justify-center py-3 text-base">
-            <i data-lucide="log-in" class="w-4 h-4"></i> 登录系统
+            <LogIn class="w-4 h-4" /> 登录系统
           </button>
         </div>
 
@@ -119,6 +120,19 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/store/modules/user'
+import { 
+  Ticket, 
+  Zap, 
+  BarChart3, 
+  ShieldCheck, 
+  AlertCircle, 
+  AlertTriangle, 
+  User, 
+  Lock, 
+  Eye, 
+  EyeOff, 
+  LogIn 
+} from 'lucide-vue-next'
 
 const router = useRouter()
 const userStore = useUserStore()

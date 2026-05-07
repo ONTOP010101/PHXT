@@ -230,11 +230,14 @@ router.get('/rooms', async (req, res) => {
       const currentNum = currentQueue ? currentQueue.queueNumber?.split('_')[1] || '001' : '001'
       const nextNum = waitingQueues.length > 0 ? waitingQueues[0].queueNumber?.split('_')[1] || '001' : '001'
       
+      const roomNameMatch = meetingData.name.match(/\d+/)
+      const roomNumber = roomNameMatch ? parseInt(roomNameMatch[0]) : meetingData.id
+
       return {
         id: meetingData.id,
         name: meetingData.name,
-        current_number: `${meetingData.id}_${currentNum}`,
-        next_number: `${meetingData.id}_${nextNum}`,
+        current_number: `${roomNumber}_${currentNum}`,
+        next_number: `${roomNumber}_${nextNum}`,
         wait_time: waitingQueues.length > 0 ? Math.max(1, waitingQueues.length * 2) : 0,
         total: 1000,
         current: parseInt(currentNum)

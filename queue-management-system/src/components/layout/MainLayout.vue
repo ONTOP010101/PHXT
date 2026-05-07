@@ -53,6 +53,7 @@ import QueueSelfPage from '../../pages/QueueSelf.vue'
 import QueueDisplayPage from '../../pages/QueueDisplay.vue'
 import SystemRolePage from '../../pages/SystemRole.vue'
 import SystemUserPage from '../../pages/SystemUser.vue'
+import SystemLogPage from '../../pages/SystemLog.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,7 +80,8 @@ const pageTitles = {
   '/queue/self': '内部排号管理',
   '/queue/display': '排号显示大屏',
   '/system/role': '角色管理',
-  '/system/user': '用户管理'
+  '/system/user': '用户管理',
+  '/system/log': '系统日志'
 }
 
 watch(() => sidebarRef.value?.isCollapsed, (newValue) => {
@@ -113,7 +115,8 @@ const currentComponent = computed(() => {
     '/queue/self': QueueSelfPage,
     '/queue/display': QueueDisplayPage,
     '/system/role': SystemRolePage,
-    '/system/user': SystemUserPage
+    '/system/user': SystemUserPage,
+    '/system/log': SystemLogPage
   }
   return pathMap[route.path] || HomePage
 })

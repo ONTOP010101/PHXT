@@ -1,6 +1,6 @@
 <template>
-  <div id="page-system-user" class="slide-in">
-    <div class="flex items-center justify-between mb-6">
+  <div id="page-system-user" class="slide-in flex flex-col" style="height: calc(100vh - 150px);">
+    <div class="flex items-center justify-between mb-6 flex-shrink-0">
       <div>
         <h2 class="text-xl font-bold text-surface-900">用户管理</h2>
         <p class="text-sm text-surface-400 mt-1">管理系统用户与角色分配</p>
@@ -45,7 +45,7 @@
       </div>
     </Teleport>
     <!-- Filter Bar -->
-    <div class="card p-4 mb-4">
+    <div class="card p-4 mb-4 flex-shrink-0">
       <div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center;">
         <div style="flex: 1; min-width: 180px;">
           <div style="position: relative;">
@@ -66,41 +66,43 @@
       </div>
     </div>
     <!-- Table -->
-    <div class="card overflow-hidden">
-      <table class="data-table w-full">
-        <thead><tr>
-          <th><input type="checkbox" class="w-4 h-4" /></th>
-          <th>用户名</th><th>姓名</th><th>角色</th><th>最后登录</th><th>状态</th><th>操作</th>
-        </tr></thead>
-        <tbody>
-          <tr v-for="user in pagedUsers" :key="user.id">
-            <td><input type="checkbox" class="w-4 h-4" /></td>
-            <td>{{ user.username }}</td>
-            <td>{{ user.name }}</td>
-            <td>{{ user.role }}</td>
-            <td>{{ user.lastLogin }}</td>
-            <td>
-              <span :class="user.status === 'active' ? 'badge badge-green' : 'badge badge-gray'">
-                {{ user.status === 'active' ? '启用' : '禁用' }}
-              </span>
-            </td>
-            <td>
-              <div class="flex justify-center items-center gap-2">
-                <button class="btn-icon p-2 rounded-full hover:bg-gray-100 transition-colors" @click="handleUserAction(user.id, 'edit')">
-                  <Edit class="w-4 h-4 text-gray-600" />
-                </button>
-                <button class="btn-icon p-2 rounded-full hover:bg-gray-100 transition-colors" @click="handleUserAction(user.id, 'reset')">
-                  <RefreshCw class="w-4 h-4 text-gray-600" />
-                </button>
-                <button class="btn-icon p-2 rounded-full hover:bg-gray-100 transition-colors" :disabled="user.role === '超级管理员'" @click="handleUserAction(user.id, 'delete')">
-                  <Trash2 class="w-4 h-4" :class="user.role === '超级管理员' ? 'text-gray-300' : 'text-red-500'" />
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <div class="p-4 border-t border-surface-100 flex items-center justify-between text-sm text-surface-400">
+    <div class="card overflow-hidden flex-1 flex flex-col">
+      <div class="overflow-y-auto flex-1">
+        <table class="data-table w-full">
+          <thead class="sticky top-0 bg-white z-10"><tr>
+            <th><input type="checkbox" class="w-4 h-4" /></th>
+            <th>用户名</th><th>姓名</th><th>角色</th><th>最后登录</th><th>状态</th><th>操作</th>
+          </tr></thead>
+          <tbody>
+            <tr v-for="user in pagedUsers" :key="user.id">
+              <td><input type="checkbox" class="w-4 h-4" /></td>
+              <td>{{ user.username }}</td>
+              <td>{{ user.name }}</td>
+              <td>{{ user.role }}</td>
+              <td>{{ user.lastLogin }}</td>
+              <td>
+                <span :class="user.status === 'active' ? 'badge badge-green' : 'badge badge-gray'">
+                  {{ user.status === 'active' ? '启用' : '禁用' }}
+                </span>
+              </td>
+              <td>
+                <div class="flex justify-center items-center gap-2">
+                  <button class="btn-icon p-2 rounded-full hover:bg-gray-100 transition-colors" @click="handleUserAction(user.id, 'edit')">
+                    <Edit class="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button class="btn-icon p-2 rounded-full hover:bg-gray-100 transition-colors" @click="handleUserAction(user.id, 'reset')">
+                    <RefreshCw class="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button class="btn-icon p-2 rounded-full hover:bg-gray-100 transition-colors" :disabled="user.role === '超级管理员'" @click="handleUserAction(user.id, 'delete')">
+                    <Trash2 class="w-4 h-4" :class="user.role === '超级管理员' ? 'text-gray-300' : 'text-red-500'" />
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="p-4 border-t border-surface-100 flex items-center justify-between text-sm text-surface-400 flex-shrink-0">
         <span>共 <strong class="text-surface-700">{{ total }}</strong> 个用户</span>
         <div class="flex gap-1">
           <button class="btn-icon w-7 h-7" :disabled="currentPage === 1" @click="handlePageChange(currentPage - 1)"><ChevronLeft class="w-3.5 h-3.5" /></button>
@@ -199,7 +201,7 @@
     <!-- 消息提示框 -->
     <Teleport to="body">
       <div v-if="showMessage" class="custom-message" @click="closeMessage">
-        <div class="message-content">{{ message }}</div>
+        <div class="message-content" v-html="sanitizedMessage"></div>
         <button class="message-close" @click.stop="closeMessage">确定</button>
       </div>
     </Teleport>
@@ -222,6 +224,9 @@ const showResetModal = ref(false)
 
 const showMessage = ref(false)
 const message = ref('')
+const sanitizedMessage = computed(() => {
+  return message.value.replace(/\n/g, '<br>')
+})
 
 const showCustomMessage = (msg) => {
   message.value = msg
@@ -258,7 +263,7 @@ const filterRole = ref('全部角色')
 const filterStatus = ref('全部状态')
 
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(200)
 
 const totalPages = computed(() => {
   return Math.ceil(total.value / pageSize.value)

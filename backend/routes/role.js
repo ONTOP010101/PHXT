@@ -145,16 +145,20 @@ router.post('/update', async (req, res) => {
       }
     }
 
-    const updateData = {
-      name: name || role.name,
-      description: description !== undefined ? description : role.description
-    }
-
     if (permissions) {
-      updateData.permissions = typeof permissions === 'string' ? JSON.parse(permissions) : permissions
+      const perms = typeof permissions === 'string' ? JSON.parse(permissions) : permissions
+      role.set('permissions', perms)
     }
 
-    await role.update(updateData)
+    if (name && name !== role.name) {
+      role.set('name', name)
+    }
+
+    if (description !== undefined) {
+      role.set('description', description)
+    }
+
+    await role.save()
 
     let finalPermissions = role.permissions
     if (typeof finalPermissions === 'string') {

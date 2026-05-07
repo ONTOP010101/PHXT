@@ -172,7 +172,7 @@
         </div>
       </div>
 
-      <div v-if="hasPermission('role', 'enable') || hasPermission('user', 'enable')" class="menu-group">
+      <div v-if="hasPermission('role', 'enable') || hasPermission('user', 'enable') || hasPermission('systemLog', 'enable')" class="menu-group">
         <div 
           class="menu-group-title flex items-center justify-between px-3 py-2 mb-1 cursor-pointer"
           @click="toggleMenu('system')"
@@ -200,11 +200,20 @@
           <router-link 
             v-if="hasPermission('user', 'enable')"
             to="/system/user" 
-            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer"
+            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-0.5 cursor-pointer"
             :class="{ active: currentRoute === '/system/user' }"
           >
             <UserCog class="flex-shrink-0" />
             <span class="text-sm" v-if="!isCollapsed">用户管理</span>
+          </router-link>
+          <router-link 
+            v-if="hasPermission('systemLog', 'enable')"
+            to="/system/log" 
+            class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl mb-1 cursor-pointer"
+            :class="{ active: currentRoute === '/system/log' }"
+          >
+            <FileText class="flex-shrink-0" />
+            <span class="text-sm" v-if="!isCollapsed">系统日志</span>
           </router-link>
         </div>
       </div>
@@ -215,7 +224,7 @@
 <script setup>
 import { computed, ref, defineExpose } from 'vue'
 import { useRoute } from 'vue-router'
-import { ChevronLeft, ChevronRight, LayoutDashboard, Folder, Users, DoorOpen, Briefcase, UserCheck, CalendarCheck, Ticket, Monitor, Layout, Smartphone, Sliders, Settings, ChevronDown, Shield, UserCog } from 'lucide-vue-next'
+import { ChevronLeft, ChevronRight, LayoutDashboard, Folder, Users, DoorOpen, Briefcase, UserCheck, CalendarCheck, Ticket, Monitor, Layout, Smartphone, Sliders, Settings, ChevronDown, Shield, UserCog, FileText } from 'lucide-vue-next'
 import { useUserStore } from '@/store/modules/user'
 
 const route = useRoute()

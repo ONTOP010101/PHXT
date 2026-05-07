@@ -285,6 +285,22 @@
                 </div>
               </div>
             </div>
+            <div class="space-y-2">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" class="w-4 h-4" :checked="currentRolePermissions.systemLog?.enable" @change="updatePermission('systemLog', 'enable', $event.target.checked)" />
+                <span class="font-medium text-surface-700">系统日志</span>
+              </div>
+              <div class="ml-6 flex flex-wrap gap-4">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" class="w-4 h-4" :checked="currentRolePermissions.systemLog?.view" @change="updatePermission('systemLog', 'view', $event.target.checked)" />
+                  <span class="text-sm text-surface-600">查看</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" class="w-4 h-4" :checked="currentRolePermissions.systemLog?.clear" @change="updatePermission('systemLog', 'clear', $event.target.checked)" />
+                  <span class="text-sm text-surface-600">清除</span>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="mt-6 flex justify-end">
             <button class="btn btn-primary" @click="savePermissions">
@@ -348,7 +364,8 @@ const defaultPermissions = {
   display: { enable: false, view: false, config: false, control: false },
   miniApp: { enable: false, view: false, config: false },
   role: { enable: false, view: false, add: false, edit: false, delete: false, permission: false },
-  user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false }
+  user: { enable: false, view: false, add: false, edit: false, delete: false, resetPwd: false },
+  systemLog: { enable: false, view: false, clear: false }
 }
 
 const originalRolePermissions = ref({})
@@ -406,15 +423,30 @@ const allPermissionsChecked = computed(() => {
   return Object.values(rolePerms).every(module => module.enable)
 })
 
+const mergeWithDefaults = (permissions) => {
+  const merged = JSON.parse(JSON.stringify(defaultPermissions))
+  if (permissions) {
+    Object.keys(permissions).forEach(module => {
+      if (merged[module]) {
+        Object.keys(permissions[module]).forEach(perm => {
+          merged[module][perm] = permissions[module][perm]
+        })
+      } else {
+        merged[module] = { ...permissions[module] }
+      }
+    })
+  }
+  return merged
+}
+
 const updatePermission = (module, permission, value) => {
   if (!tempRolePermissions.value[activeRoleId.value]) {
     tempRolePermissions.value[activeRoleId.value] = JSON.parse(JSON.stringify(defaultPermissions))
   }
-  tempRolePermissions.value[activeRoleId.value][module][permission] = value
-  if (permission === 'enable') {
-    // 主菜单的enable只控制侧边栏显示，不影响子权限
+  if (!tempRolePermissions.value[activeRoleId.value][module]) {
+    tempRolePermissions.value[activeRoleId.value][module] = { ...defaultPermissions[module] }
   }
-  // 子权限的操作不影响主菜单的enable状态
+  tempRolePermissions.value[activeRoleId.value][module][permission] = value
 }
 
 const toggleAllPermissions = (event) => {
@@ -463,7 +495,8 @@ const savePermissions = async () => {
 const selectRole = (roleId) => {
   activeRoleId.value = roleId
   if (!tempRolePermissions.value[roleId]) {
-    tempRolePermissions.value[roleId] = JSON.parse(JSON.stringify(originalRolePermissions.value[roleId] || defaultPermissions))
+    const merged = mergeWithDefaults(originalRolePermissions.value[roleId])
+    tempRolePermissions.value[roleId] = merged
   }
 }
 
@@ -475,8 +508,9 @@ const loadRoles = async () => {
       if (roles.value.length > 0) {
         activeRoleId.value = roles.value[0].id
         roles.value.forEach(role => {
-          originalRolePermissions.value[role.id] = role.permissions || JSON.parse(JSON.stringify(defaultPermissions))
-          tempRolePermissions.value[role.id] = JSON.parse(JSON.stringify(role.permissions || defaultPermissions))
+          const merged = mergeWithDefaults(role.permissions)
+          originalRolePermissions.value[role.id] = merged
+          tempRolePermissions.value[role.id] = JSON.parse(JSON.stringify(merged))
         })
       }
     }

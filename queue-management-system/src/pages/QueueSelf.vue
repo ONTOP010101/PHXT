@@ -1,7 +1,7 @@
 <template>
   <div id="page-queue-self" class="slide-in">
     <div v-if="showMessage" class="custom-message" @click="closeMessage">
-      <div class="message-content">{{ message }}</div>
+      <div class="message-content" v-html="sanitizedMessage"></div>
       <button class="message-close" @click.stop="closeMessage">确定</button>
     </div>
     
@@ -114,6 +114,10 @@ const selectedRoomId = ref('')
 const showMessage = ref(false)
 const message = ref('')
 
+const sanitizedMessage = computed(() => {
+  return message.value.replace(/\n/g, '<br>')
+})
+
 const meetingRooms = ref([])
 const queueList = ref([])
 const companyList = ref([])
@@ -142,7 +146,7 @@ const loadQueueList = async () => {
   try {
     const res = await getQueueList({ pageSize: 1000 })
     if (res.code === 200 && res.data) {
-      queueList.value = res.data.list || []
+      queueList.value = (res.data.list || []).filter(item => item.status !== 'cancelled')
     }
   } catch (error) {
     console.error('加载排号列表失败:', error)
@@ -323,7 +327,6 @@ const printTicket = async () => {
         }
 
         if (matchedQueue.queueNumber && matchedQueue.status !== 'called' && matchedQueue.status !== 'completed') {
-          failResults.push(`${actualRoomName}：您已排号完成，无需再次排号`)
           continue
         }
 

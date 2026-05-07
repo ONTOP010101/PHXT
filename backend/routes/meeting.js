@@ -282,22 +282,50 @@ router.post('/close', async (req, res) => {
       })
     }
     
-    // 关闭洽谈室时删除所有相关排号数据
-    await db.Queue.destroy({
-      where: { roomId: id }
+    // 获取该洽谈室的排号数据
+    const queues = await db.Queue.findAll({
+      where: { roomId: id },
+      order: [['createdAt', 'ASC']]
     })
-    
+
+    const restoreData = {
+      status: meeting.status,
+      type: meeting.type,
+      companyName: meeting.companyName,
+      visitRequirement: meeting.visitRequirement,
+      quotePoints: meeting.quotePoints,
+      queues: queues.map(q => ({
+        id: q.id,
+        queueNumber: q.queueNumber,
+        customerName: q.customerName,
+        companyName: q.companyName,
+        status: q.status,
+        roomId: q.roomId,
+        createdAt: q.createdAt
+      }))
+    }
+
+    // 关闭时重置洽谈室状态，取消所有排号记录
     await meeting.update({ 
       status: 'free',
       companyName: null,
       visitRequirement: null,
       quotePoints: null
     })
+
+    // 取消该洽谈室所有排号记录，以便恢复时不冲突
+    await db.Queue.update(
+      { status: 'cancelled' },
+      { where: { roomId: id, status: { [db.Sequelize.Op.ne]: 'cancelled' } } }
+    )
     
     res.json({
       code: 200,
       message: '关闭成功',
-      data: meeting
+      data: {
+        ...meeting.toJSON(),
+        restoreData
+      }
     })
   } catch (error) {
     console.error('关闭洽谈室失败:', error)
@@ -334,6 +362,61 @@ router.post('/delete/:id', async (req, res) => {
     res.json({
       code: 500,
       message: '删除洽谈室失败',
+      data: null
+    })
+  }
+})
+
+// 恢复洽谈室数据
+router.post('/restore', async (req, res) => {
+  try {
+    const { id, restoreData } = req.body
+    
+    if (!id || !restoreData) {
+      return res.json({
+        code: 400,
+        message: '参数不完整',
+        data: null
+      })
+    }
+    
+    const meeting = await db.MeetingRoom.findByPk(id)
+    if (!meeting) {
+      return res.json({
+        code: 404,
+        message: '洽谈室不存在',
+        data: null
+      })
+    }
+    
+    await meeting.update({
+      status: restoreData.status || 'occupied',
+      type: restoreData.type || meeting.type,
+      companyName: restoreData.companyName || null,
+      visitRequirement: restoreData.visitRequirement || null,
+      quotePoints: restoreData.quotePoints || null
+    })
+    
+    // 恢复排号数据（将排号的 roomId 重新关联）
+    if (restoreData.queues && restoreData.queues.length > 0) {
+      for (const queue of restoreData.queues) {
+        await db.Queue.update(
+          { roomId: id },
+          { where: { id: queue.id } }
+        )
+      }
+    }
+    
+    res.json({
+      code: 200,
+      message: '恢复成功',
+      data: meeting
+    })
+  } catch (error) {
+    console.error('恢复洽谈室失败:', error)
+    res.json({
+      code: 500,
+      message: '恢复洽谈室失败',
       data: null
     })
   }

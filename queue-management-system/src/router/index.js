@@ -16,6 +16,7 @@ import QueueDisplayPage from '../pages/QueueDisplay.vue'
 import QueueDisplayPreviewPage from '../pages/QueueDisplayPreview.vue'
 import SystemRolePage from '../pages/SystemRole.vue'
 import SystemUserPage from '../pages/SystemUser.vue'
+import SystemLogPage from '../pages/SystemLog.vue'
 
 const routes = [
   {
@@ -102,6 +103,11 @@ const routes = [
         path: 'system/user',
         name: 'SystemUser',
         component: SystemUserPage
+      },
+      {
+        path: 'system/log',
+        name: 'SystemLog',
+        component: SystemLogPage
       }
     ]
   },
